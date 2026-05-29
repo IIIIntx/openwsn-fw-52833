@@ -32,7 +32,7 @@ int main(void) {
 
 void board_init(void) {
 
-    //clocks_start();
+    clocks_start();
 
     // initialize bsp modules
     debugpins_init();

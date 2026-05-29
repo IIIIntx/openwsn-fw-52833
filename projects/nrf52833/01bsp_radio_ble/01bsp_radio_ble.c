@@ -26,26 +26,25 @@ end of frame event), it will turn on its error LED.
 
 //=========================== defines =========================================
 
-#define LENGTH_BLE_CRC  3
-#define LENGTH_PACKET   125+LENGTH_BLE_CRC  ///< maximum length is 127 bytes
-#define CHANNEL         0              ///< 0~39
-#define TIMER_PERIOD    (0xffff>>4)     ///< 0xffff = 2s@32kHz
-#define TXPOWER         0xD5            ///< 2's complement format, 0xD8 = -40dbm
+#define LENGTH_PACKET   38             ///< S0 + length + BLE advertising payload
+#define ADV_PERIOD          (0xffff>>4) ///< 0xffff = 2s@32kHz
+#define RADIO_BLINK_PERIOD  (0xffff>>6)
 
 #define NUM_SAMPLES     SAMPLE_MAXCNT
 #define LEN_UART_BUFFER ((NUM_SAMPLES*4)+8)
 
-#define ENABLE_DF       1
+#define ENABLE_DF       0
 
 const static uint8_t ble_device_addr[6] = { 
-    0xaa, 0xbb, 0xcc, 0xcc, 0xbb, 0xaa
+    0xaa, 0xbb, 0xcc, 0xcc, 0xbb, 0xea
 };
 
-// get from https://openuuid.net/signin/:  a24e7112-a03f-4623-bb56-ae67bd653c73
-const static uint8_t ble_uuid[16]       = {
-    0xa2, 0x4e, 0x71, 0x12, 0xa0, 0x3f, 
-    0x46, 0x23, 0xbb, 0x56, 0xae, 0x67,
-    0xbd, 0x65, 0x3c, 0x73
+const static uint8_t ble_adv_channels[3] = {
+    37, 38, 39
+};
+
+const static uint8_t ble_device_name[] = {
+    'n', 'o', 'r', 'd', 'i', 'c'
 };
 
 //=========================== variables =======================================
@@ -54,6 +53,7 @@ enum {
     APP_FLAG_START_FRAME = 0x01,
     APP_FLAG_END_FRAME   = 0x02,
     APP_FLAG_TIMER       = 0x04,
+    APP_FLAG_SEND_NEXT   = 0x08,
 };
 
 typedef enum {
@@ -70,7 +70,7 @@ typedef struct {
 app_dbg_t app_dbg;
 
 typedef struct {
-                uint8_t         flags;
+     volatile   uint8_t         flags;
                 app_state_t     state;
                 uint8_t         packet[LENGTH_PACKET];
                 uint8_t         packet_len;
@@ -78,6 +78,8 @@ typedef struct {
                 uint8_t         rxpk_lqi;
                 bool            rxpk_crc;
                 uint16_t        num_samples;
+                uint8_t         adv_channel_index;
+                bool            radio_led_blinking;
                 uint32_t        sample_buffer[NUM_SAMPLES];
                 uint8_t         uart_buffer_to_send[LEN_UART_BUFFER];
                 uint16_t        uart_lastTxByteIndex;
@@ -95,7 +97,8 @@ void     cb_timer(void);
 void     cb_uartTxDone(void);
 uint8_t  cb_uartRxCb(void);
 
-void     assemble_ibeacon_packet(void);
+void     assemble_adv_name_packet(void);
+void     send_next_adv_packet(void);
 
 //=========================== main ============================================
 
@@ -104,10 +107,6 @@ void     assemble_ibeacon_packet(void);
 */
 int mote_main(void) {
     uint16_t i;
-
-    uint8_t freq_offset;
-    uint8_t sign;
-    uint8_t read;
 
     // clear local variables
     memset(&app_vars,0,sizeof(app_vars_t));
@@ -126,25 +125,19 @@ int mote_main(void) {
     radio_setStartFrameCb(cb_startFrame);
     radio_setEndFrameCb(cb_endFrame);
 
-    // prepare packet
-    app_vars.packet_len = sizeof(app_vars.packet);
-
     // start bsp timer
     sctimer_set_callback(cb_timer);
-    sctimer_setCompare(sctimer_readCounter()+TIMER_PERIOD);
+    sctimer_setCompare(sctimer_readCounter()+ADV_PERIOD);
     sctimer_enable();
 
     // prepare radio
     radio_rfOn();
-    // freq type only effects on scum port
-    radio_setFrequency(CHANNEL, FREQ_RX);
 
 #if ENABLE_DF == 1
     radio_configure_direction_finding_manual();
 #endif
 
-    // switch in RX by default
-    radio_rxEnable();
+    // stay idle between advertising packets
     app_vars.state = APP_STATE_RX;
 
     // start by a transmit
@@ -242,19 +235,31 @@ int mote_main(void) {
                     case APP_STATE_TX:
                         // done sending a packet
 
-                        memset(app_vars.packet, 0x00, sizeof(app_vars.packet));
-
-                        // switch to RX mode
-                        radio_rxEnable();
-                        radio_rxNow();
-                        app_vars.state = APP_STATE_RX;
-
-                        // led
-                        leds_sync_off();
+                        if (app_vars.adv_channel_index<sizeof(ble_adv_channels)) {
+                            app_vars.flags |= APP_FLAG_SEND_NEXT;
+                        } else {
+                            // show one visible P1.09 pulse after the 37/38/39 advertising event
+                            app_vars.state = APP_STATE_RX;
+                            app_vars.adv_channel_index = 0;
+                            leds_radio_on();
+                            app_vars.radio_led_blinking = TRUE;
+                            sctimer_setCompare(sctimer_readCounter()+RADIO_BLINK_PERIOD);
+                            // led
+                            leds_sync_off();
+                        }
                         break;
                 }
                 // clear flag
                 app_vars.flags &= ~APP_FLAG_END_FRAME;
+            }
+
+            //==== APP_FLAG_SEND_NEXT
+
+            if (app_vars.flags & APP_FLAG_SEND_NEXT) {
+                send_next_adv_packet();
+
+                // clear flag
+                app_vars.flags &= ~APP_FLAG_SEND_NEXT;
             }
 
             //==== APP_FLAG_TIMER
@@ -262,22 +267,13 @@ int mote_main(void) {
             if (app_vars.flags & APP_FLAG_TIMER) {
                 // timer fired
 
-                if (app_vars.state==APP_STATE_RX) {
-                    // stop listening
-                    radio_rfOff();
-
-                    // prepare packet
-                    app_vars.packet_len = sizeof(app_vars.packet);
-                    
-                    assemble_ibeacon_packet();
-
-                    // start transmitting packet
-                    radio_loadPacket(app_vars.packet,LENGTH_PACKET);
-
-                    radio_txEnable();
-                    radio_txNow();
-
-                    app_vars.state = APP_STATE_TX;
+                if (app_vars.radio_led_blinking==TRUE) {
+                    leds_radio_off();
+                    app_vars.radio_led_blinking = FALSE;
+                    sctimer_setCompare(sctimer_readCounter()+ADV_PERIOD);
+                } else if (app_vars.state==APP_STATE_RX) {
+                    app_vars.adv_channel_index = 0;
+                    send_next_adv_packet();
                 }
 
                 // clear flag
@@ -288,15 +284,16 @@ int mote_main(void) {
 }
 //=========================== private =========================================
 
-void assemble_ibeacon_packet(void) {
+void assemble_adv_name_packet(void) {
 
     uint8_t i;
+    uint8_t j;
     i=0;
 
     memset( app_vars.packet, 0x00, sizeof(app_vars.packet) );
 
-    app_vars.packet[i++]  = 0x42;               // BLE ADV_NONCONN_IND (this is a must)
-    app_vars.packet[i++]  = 0x21;               // Payload length
+    app_vars.packet[i++]  = 0x40;               // BLE ADV_IND, random AdvA
+    app_vars.packet[i++]  = 0x11;               // Payload length
     app_vars.packet[i++]  = ble_device_addr[0]; // BLE adv address byte 0
     app_vars.packet[i++]  = ble_device_addr[1]; // BLE adv address byte 1
     app_vars.packet[i++]  = ble_device_addr[2]; // BLE adv address byte 2
@@ -304,20 +301,34 @@ void assemble_ibeacon_packet(void) {
     app_vars.packet[i++]  = ble_device_addr[4]; // BLE adv address byte 4
     app_vars.packet[i++]  = ble_device_addr[5]; // BLE adv address byte 5
 
-    app_vars.packet[i++]  = 0x1a;
-    app_vars.packet[i++]  = 0xff;
-    app_vars.packet[i++]  = 0x4c;
-    app_vars.packet[i++]  = 0x00;
+    app_vars.packet[i++]  = 0x02;               // Flags AD length
+    app_vars.packet[i++]  = 0x01;               // Flags AD type
+    app_vars.packet[i++]  = 0x06;               // LE General Discoverable, BR/EDR not supported
 
-    app_vars.packet[i++]  = 0x02;
-    app_vars.packet[i++]  = 0x15;
-    memcpy(&app_vars.packet[i], &ble_uuid[0], 16);
-    i                    += 16;
-    app_vars.packet[i++]  = 0x00;               // major
-    app_vars.packet[i++]  = 0xff;
-    app_vars.packet[i++]  = 0x00;               // minor
-    app_vars.packet[i++]  = 0x0f;
-    app_vars.packet[i++]  = TXPOWER;            // power level
+    app_vars.packet[i++]  = sizeof(ble_device_name) + 1;
+    app_vars.packet[i++]  = 0x09;               // Complete Local Name AD type
+    for (j=0;j<sizeof(ble_device_name);j++) {
+        app_vars.packet[i++] = ble_device_name[j];
+    }
+
+    app_vars.packet_len   = i;
+}
+
+void send_next_adv_packet(void) {
+
+    assemble_adv_name_packet();
+
+    radio_setFrequency(
+        ble_adv_channels[app_vars.adv_channel_index],
+        FREQ_TX
+    );
+    app_vars.adv_channel_index++;
+
+    radio_loadPacket(app_vars.packet,app_vars.packet_len);
+    radio_txEnable();
+    leds_radio_off();
+    app_vars.state = APP_STATE_TX;
+    radio_txNow();
 }
 
 //=========================== callbacks =======================================
@@ -344,8 +355,6 @@ void cb_timer(void) {
 
     // update debug stats
     app_dbg.num_timer++;
-
-    sctimer_setCompare(sctimer_readCounter()+TIMER_PERIOD);
 }
 
 void cb_uartTxDone(void) {

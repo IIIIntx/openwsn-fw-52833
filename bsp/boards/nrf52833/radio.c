@@ -39,7 +39,7 @@
 
 #define BLE_ACCESS_ADDR           0x8E89BED6  // the actual address is 0xD6, 0xBE, 0x89, 0x8E
 
-#define RADIO_TXPOWER             0 // in 2-compilant format
+#define RADIO_TXPOWER             4 // in 2-complement format, +4 dBm
 
 // the maxmium should be ((1<<14)-1), but need larger .bss size
 #define MAX_IQSAMPLES            ((1<<8)-1)
@@ -588,13 +588,6 @@ kick_scheduler_t    radio_isr(void){
         return KICK_SCHEDULER;
     }
 
-    // END 
-    if (NRF_RADIO->EVENTS_END) {
-        
-        NRF_RADIO->EVENTS_END = (uint32_t)0;
-        return KICK_SCHEDULER;
-    }
-
     // end of frame
     if (NRF_RADIO->EVENTS_PHYEND) {
         
@@ -602,7 +595,16 @@ kick_scheduler_t    radio_isr(void){
             radio_vars.endFrame_cb(time_stampe);
         }
         
+        NRF_RADIO->EVENTS_END    = (uint32_t)0;
         NRF_RADIO->EVENTS_PHYEND = (uint32_t)0;
+        radio_vars.state         = RADIOSTATE_STOPPED;
+        return KICK_SCHEDULER;
+    }
+
+    // END
+    if (NRF_RADIO->EVENTS_END) {
+
+        NRF_RADIO->EVENTS_END = (uint32_t)0;
         return KICK_SCHEDULER;
     }
     return DO_NOT_KICK_SCHEDULER;
