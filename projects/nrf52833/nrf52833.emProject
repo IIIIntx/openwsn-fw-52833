@@ -112,7 +112,7 @@
       arm_simulator_memory_simulation_parameter="RX 00000000,00080000,FFFFFFFF;RWX 20000000,00020000,CDCDCDCD"
       arm_target_device_name="nRF52833_xxAA"
       c_preprocessor_definitions="NRF52833_XXAA;NRF52833"
-      c_user_include_directories="../../../bsp/boards/nrf52833/sdk;../../../bsp/boards/nrf52833;../../../bsp/boards/;../../../inc/"
+      c_user_include_directories="../../../bsp/boards/nrf52833/sdk;../../../bsp/boards/nrf52833;../../../bsp/boards/;../../../bsp/chips/bmi270;../../../inc/"
       debug_start_from_entry_point_symbol="No"
       gcc_entry_point="Reset_Handler"
       link_linker_script_file="../../../bsp/boards/nrf52833/sdk/nrf52833.ld"
@@ -133,6 +133,14 @@
           exclude=""
           filter="*.c;*.s;*.h"
           path="../../../bsp/boards/nrf52833"
+          recurse="Yes" />
+      </folder>
+      <folder Name="chips">
+        <folder
+          Name="bmi270"
+          exclude=""
+          filter="*.c;*.h"
+          path="../../../bsp/chips/bmi270"
           recurse="Yes" />
       </folder>
     </folder>

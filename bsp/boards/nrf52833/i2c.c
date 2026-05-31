@@ -27,6 +27,7 @@
 #define TWIM_INTENSET_LASTTX_POS     24
 
 #define TWI_INT_ENABLED       0
+#define I2C_WAIT_TIMEOUT      0x000fffff
 
 //=========================== variables =======================================
 
@@ -38,6 +39,8 @@ typedef struct {
 //=========================== prototypes ======================================
 
 void nrf_gpio_cfg_input(uint32_t pin_number);
+uint8_t i2c_wait_event(volatile uint32_t* event);
+void i2c_recover_from_error(void);
 
 //=========================== public ==========================================
 
@@ -98,6 +101,7 @@ uint32_t i2c_read_bytes(uint8_t address, uint8_t* buffer, uint32_t length) {
     // clear events
     NRF_TWIM0->EVENTS_LASTTX    = 0;
     NRF_TWIM0->EVENTS_STOPPED   = 0;
+    NRF_TWIM0->EVENTS_ERROR     = 0;
 
     // set tx buffer
     NRF_TWIM0->TXD.PTR      = (uint32_t)(&tx_buffer[0]);
@@ -106,8 +110,14 @@ uint32_t i2c_read_bytes(uint8_t address, uint8_t* buffer, uint32_t length) {
 
     // start to write
     NRF_TWIM0->TASKS_STARTTX  = 1;
-    while( NRF_TWIM0->EVENTS_LASTTX==0);
-    while( NRF_TWIM0->EVENTS_STOPPED==0);
+    if (i2c_wait_event(&NRF_TWIM0->EVENTS_LASTTX)==FALSE) {
+        i2c_recover_from_error();
+        return 0;
+    }
+    if (i2c_wait_event(&NRF_TWIM0->EVENTS_STOPPED)==FALSE) {
+        i2c_recover_from_error();
+        return 0;
+    }
     NRF_TWIM0->EVENTS_LASTTX  = 0;
     NRF_TWIM0->EVENTS_STOPPED = 0;
 
@@ -116,6 +126,7 @@ uint32_t i2c_read_bytes(uint8_t address, uint8_t* buffer, uint32_t length) {
     // clear events
     NRF_TWIM0->EVENTS_LASTRX  = 0;
     NRF_TWIM0->EVENTS_STOPPED = 0;
+    NRF_TWIM0->EVENTS_ERROR   = 0;
 
     // set rx buffer
     NRF_TWIM0->RXD.PTR        = (uint32_t)(buffer);
@@ -123,8 +134,14 @@ uint32_t i2c_read_bytes(uint8_t address, uint8_t* buffer, uint32_t length) {
 
     // start to read
     NRF_TWIM0->TASKS_STARTRX  = 1;
-    while( NRF_TWIM0->EVENTS_LASTRX==0);
-    while( NRF_TWIM0->EVENTS_STOPPED==0);
+    if (i2c_wait_event(&NRF_TWIM0->EVENTS_LASTRX)==FALSE) {
+        i2c_recover_from_error();
+        return 0;
+    }
+    if (i2c_wait_event(&NRF_TWIM0->EVENTS_STOPPED)==FALSE) {
+        i2c_recover_from_error();
+        return 0;
+    }
     NRF_TWIM0->EVENTS_LASTRX  = 0;
     NRF_TWIM0->EVENTS_STOPPED = 0;
 
@@ -139,6 +156,7 @@ uint32_t i2c_write_bytes(uint8_t address, uint8_t* buffer, uint32_t length) {
     // clear events
     NRF_TWIM0->EVENTS_LASTTX    = 0;
     NRF_TWIM0->EVENTS_STOPPED   = 0;
+    NRF_TWIM0->EVENTS_ERROR     = 0;
 
     // set tx buffer
     NRF_TWIM0->TXD.PTR      = (uint32_t)(&tx_buffer[0]);
@@ -148,8 +166,14 @@ uint32_t i2c_write_bytes(uint8_t address, uint8_t* buffer, uint32_t length) {
 
     // start to write
     NRF_TWIM0->TASKS_STARTTX = 1;
-    while( NRF_TWIM0->EVENTS_LASTTX==0);
-    while( NRF_TWIM0->EVENTS_STOPPED==0);
+    if (i2c_wait_event(&NRF_TWIM0->EVENTS_LASTTX)==FALSE) {
+        i2c_recover_from_error();
+        return 0;
+    }
+    if (i2c_wait_event(&NRF_TWIM0->EVENTS_STOPPED)==FALSE) {
+        i2c_recover_from_error();
+        return 0;
+    }
     NRF_TWIM0->EVENTS_LASTTX = 0;
     NRF_TWIM0->EVENTS_STOPPED = 0;
 
@@ -158,6 +182,33 @@ uint32_t i2c_write_bytes(uint8_t address, uint8_t* buffer, uint32_t length) {
 }
 
 //=========================== private =========================================
+
+uint8_t i2c_wait_event(volatile uint32_t* event) {
+
+    uint32_t timeout;
+
+    timeout = I2C_WAIT_TIMEOUT;
+    while ((*event)==0) {
+        if (NRF_TWIM0->EVENTS_ERROR) {
+            return FALSE;
+        }
+        if (timeout==0) {
+            return FALSE;
+        }
+        timeout--;
+    }
+
+    return TRUE;
+}
+
+void i2c_recover_from_error(void) {
+
+    NRF_TWIM0->TASKS_STOP = 1;
+    NRF_TWIM0->EVENTS_ERROR = 0;
+    NRF_TWIM0->EVENTS_LASTTX = 0;
+    NRF_TWIM0->EVENTS_LASTRX = 0;
+    NRF_TWIM0->EVENTS_STOPPED = 0;
+}
 
 void nrf_gpio_cfg_input(uint32_t pin_number) {
 

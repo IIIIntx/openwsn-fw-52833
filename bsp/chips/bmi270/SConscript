@@ -1,0 +1,9 @@
+import os
+
+Import('env')
+
+localEnv = env.Clone()
+source = ['bmi270.c']
+bmi270 = localEnv.Object(source=source)
+
+Return('bmi270')

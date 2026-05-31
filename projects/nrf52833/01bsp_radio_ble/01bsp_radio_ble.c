@@ -23,11 +23,12 @@ end of frame event), it will turn on its error LED.
 #include "sctimer.h"
 #include "uart.h"
 #include "radio_df.h"
+#include "bmi270.h"
 
 //=========================== defines =========================================
 
 #define LENGTH_PACKET   38             ///< S0 + length + BLE advertising payload
-#define ADV_PERIOD          (0xffff>>4) ///< 0xffff = 2s@32kHz
+#define ADV_PERIOD          32768       ///< 1s @32kHz
 #define RADIO_BLINK_PERIOD  (0xffff>>6)
 
 #define NUM_SAMPLES     SAMPLE_MAXCNT
@@ -80,6 +81,11 @@ typedef struct {
                 uint16_t        num_samples;
                 uint8_t         adv_channel_index;
                 bool            radio_led_blinking;
+                bool            bmi270_present;
+                uint8_t         bmi270_who_am_i;
+                int16_t         acc_x;
+                int16_t         acc_y;
+                int16_t         acc_z;
                 uint32_t        sample_buffer[NUM_SAMPLES];
                 uint8_t         uart_buffer_to_send[LEN_UART_BUFFER];
                 uint16_t        uart_lastTxByteIndex;
@@ -98,6 +104,7 @@ void     cb_uartTxDone(void);
 uint8_t  cb_uartRxCb(void);
 
 void     assemble_adv_name_packet(void);
+void     update_bmi270_sample(void);
 void     send_next_adv_packet(void);
 
 //=========================== main ============================================
@@ -120,6 +127,14 @@ int mote_main(void) {
 #endif
     uart_setCallbacks(cb_uartTxDone,cb_uartRxCb);
     uart_enableInterrupts();
+
+    // prepare BMI270. WHO_AM_I should read 0x24.
+    i2c_set_addr(BMI270_ADDR);
+    app_vars.bmi270_who_am_i = bmi270_who_am_i();
+    if (app_vars.bmi270_who_am_i==BMI270_CHIPID) {
+        app_vars.bmi270_present = TRUE;
+        bmi270_default_config();
+    }
 
     // add callback functions radio
     radio_setStartFrameCb(cb_startFrame);
@@ -273,6 +288,7 @@ int mote_main(void) {
                     sctimer_setCompare(sctimer_readCounter()+ADV_PERIOD);
                 } else if (app_vars.state==APP_STATE_RX) {
                     app_vars.adv_channel_index = 0;
+                    update_bmi270_sample();
                     send_next_adv_packet();
                 }
 
@@ -286,14 +302,20 @@ int mote_main(void) {
 
 void assemble_adv_name_packet(void) {
 
-    uint8_t i;
-    uint8_t j;
+    uint8_t  i;
+    uint8_t  j;
+    uint16_t acc_x;
+    uint16_t acc_y;
+    uint16_t acc_z;
     i=0;
+    acc_x = (uint16_t)app_vars.acc_x;
+    acc_y = (uint16_t)app_vars.acc_y;
+    acc_z = (uint16_t)app_vars.acc_z;
 
     memset( app_vars.packet, 0x00, sizeof(app_vars.packet) );
 
     app_vars.packet[i++]  = 0x40;               // BLE ADV_IND, random AdvA
-    app_vars.packet[i++]  = 0x11;               // Payload length
+    app_vars.packet[i++]  = 0x1c;               // Payload length
     app_vars.packet[i++]  = ble_device_addr[0]; // BLE adv address byte 0
     app_vars.packet[i++]  = ble_device_addr[1]; // BLE adv address byte 1
     app_vars.packet[i++]  = ble_device_addr[2]; // BLE adv address byte 2
@@ -311,7 +333,35 @@ void assemble_adv_name_packet(void) {
         app_vars.packet[i++] = ble_device_name[j];
     }
 
+    app_vars.packet[i++]  = 0x0a;               // Manufacturer AD length
+    app_vars.packet[i++]  = 0xff;               // Manufacturer Specific Data type
+    app_vars.packet[i++]  = 0xff;               // Company ID LSB, test value
+    app_vars.packet[i++]  = 0xff;               // Company ID MSB, test value
+    app_vars.packet[i++]  = app_vars.bmi270_who_am_i;
+    app_vars.packet[i++]  = (uint8_t)((acc_x >> 0) & 0x00ff);
+    app_vars.packet[i++]  = (uint8_t)((acc_x >> 8) & 0x00ff);
+    app_vars.packet[i++]  = (uint8_t)((acc_y >> 0) & 0x00ff);
+    app_vars.packet[i++]  = (uint8_t)((acc_y >> 8) & 0x00ff);
+    app_vars.packet[i++]  = (uint8_t)((acc_z >> 0) & 0x00ff);
+    app_vars.packet[i++]  = (uint8_t)((acc_z >> 8) & 0x00ff);
+
     app_vars.packet_len   = i;
+}
+
+void update_bmi270_sample(void) {
+
+    if (app_vars.bmi270_present==FALSE) {
+        app_vars.acc_x = 0;
+        app_vars.acc_y = 0;
+        app_vars.acc_z = 0;
+        return;
+    }
+
+    i2c_set_addr(BMI270_ADDR);
+    bmi270_read_6dof_data();
+    app_vars.acc_x = bmi270_read_acc_x();
+    app_vars.acc_y = bmi270_read_acc_y();
+    app_vars.acc_z = bmi270_read_acc_z();
 }
 
 void send_next_adv_packet(void) {

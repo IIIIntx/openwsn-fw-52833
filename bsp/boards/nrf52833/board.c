@@ -16,6 +16,8 @@
 
 //=========================== variables =======================================
 
+#define CLOCK_START_TIMEOUT 0x00ffffff
+
 //=========================== prototypes ======================================
 
 void clocks_start(void);
@@ -58,8 +60,14 @@ void board_reset(void) {
 
 void clocks_start( void ){
 
+    uint32_t timeout;
+
     // Start HFCLK and wait for it to start.
     NRF_CLOCK->EVENTS_HFCLKSTARTED = 0;
     NRF_CLOCK->TASKS_HFCLKSTART = 1;
-    while (NRF_CLOCK->EVENTS_HFCLKSTARTED == 0);
+
+    timeout = CLOCK_START_TIMEOUT;
+    while ((NRF_CLOCK->EVENTS_HFCLKSTARTED == 0) && (timeout > 0)) {
+        timeout--;
+    }
 }
