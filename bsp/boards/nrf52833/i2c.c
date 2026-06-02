@@ -16,6 +16,8 @@
 
 #define DOF10_SCL_PIN   NRF_GPIO_PIN_MAP(0,30)   // SCL signal pin P0.30
 #define DOF10_SDA_PIN   NRF_GPIO_PIN_MAP(0,31)  // SDA signal pin P0.31
+#define DOF10_SA0_PIN   NRF_GPIO_PIN_MAP(0,29)  // BMI270 SA0 pin P0.29
+#define DOF10_SA0_HIGH  0                       // 0: BMI270 address 0x68, 1: address 0x69
 #define DOF10_FREQ      0x06400000              // frequency 6400000->400kbps
 
 #define TWIM_INTENSET_STOPPED_POS    1
@@ -39,6 +41,7 @@ typedef struct {
 //=========================== prototypes ======================================
 
 void nrf_gpio_cfg_input(uint32_t pin_number);
+static void i2c_gpio_cfg_output(uint32_t pin_number, uint8_t value);
 uint8_t i2c_wait_event(volatile uint32_t* event);
 void i2c_recover_from_error(void);
 
@@ -46,6 +49,7 @@ void i2c_recover_from_error(void);
 
 void i2c_init(void) {
 
+    i2c_gpio_cfg_output(DOF10_SA0_PIN, DOF10_SA0_HIGH);
     nrf_gpio_cfg_input(DOF10_SCL_PIN);
     nrf_gpio_cfg_input(DOF10_SDA_PIN);
 
@@ -230,5 +234,34 @@ void nrf_gpio_cfg_input(uint32_t pin_number) {
         | ((uint32_t)GPIO_PIN_CNF_INPUT_Connect << GPIO_PIN_CNF_INPUT_Pos)
         | ((uint32_t)GPIO_PIN_CNF_PULL_Pullup << GPIO_PIN_CNF_PULL_Pos)
         | ((uint32_t)GPIO_PIN_CNF_DRIVE_S0D1 << GPIO_PIN_CNF_DRIVE_Pos)
+        | ((uint32_t)GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos);
+}
+
+static void i2c_gpio_cfg_output(uint32_t pin_number, uint8_t value) {
+
+    NRF_GPIO_Type* NRF_Px_port;
+    uint32_t       nrf_pin_number;
+
+    if (pin_number < 32) {
+
+        NRF_Px_port     = NRF_P0;
+        nrf_pin_number  = pin_number;
+    } else {
+
+        NRF_Px_port = NRF_P1;
+        nrf_pin_number  = pin_number & 0x1f;
+    }
+
+    if (value) {
+        NRF_Px_port->OUTSET = (uint32_t)1 << nrf_pin_number;
+    } else {
+        NRF_Px_port->OUTCLR = (uint32_t)1 << nrf_pin_number;
+    }
+
+    NRF_Px_port->PIN_CNF[nrf_pin_number]  = \
+            ((uint32_t)GPIO_PIN_CNF_DIR_Output << GPIO_PIN_CNF_DIR_Pos)
+        | ((uint32_t)GPIO_PIN_CNF_INPUT_Disconnect << GPIO_PIN_CNF_INPUT_Pos)
+        | ((uint32_t)GPIO_PIN_CNF_PULL_Disabled << GPIO_PIN_CNF_PULL_Pos)
+        | ((uint32_t)GPIO_PIN_CNF_DRIVE_S0S1 << GPIO_PIN_CNF_DRIVE_Pos)
         | ((uint32_t)GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos);
 }

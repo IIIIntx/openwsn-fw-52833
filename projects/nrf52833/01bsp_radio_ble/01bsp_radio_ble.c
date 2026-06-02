@@ -22,6 +22,7 @@ end of frame event), it will turn on its error LED.
 #include "leds.h"
 #include "sctimer.h"
 #include "uart.h"
+#include "i2c.h"
 #include "radio_df.h"
 #include "bmi270.h"
 
@@ -35,6 +36,12 @@ end of frame event), it will turn on its error LED.
 #define LEN_UART_BUFFER ((NUM_SAMPLES*4)+8)
 
 #define ENABLE_DF       0
+
+#define BMI270_DIAG_PRESENT       0x01
+#define BMI270_DIAG_READ_OK       0x02
+#define BMI270_DIAG_CHIPID_OK     0x04
+#define BMI270_DIAG_ALT_ADDR      0x08
+#define BMI270_DIAG_INIT_OK       0x10
 
 const static uint8_t ble_device_addr[6] = { 
     0xaa, 0xbb, 0xcc, 0xcc, 0xbb, 0xea
@@ -82,7 +89,13 @@ typedef struct {
                 uint8_t         adv_channel_index;
                 bool            radio_led_blinking;
                 bool            bmi270_present;
+                bool            bmi270_read_ok;
+                uint8_t         bmi270_addr;
+                uint8_t         bmi270_diag;
                 uint8_t         bmi270_who_am_i;
+                uint8_t         bmi270_status;
+                uint8_t         bmi270_error_reg;
+                uint8_t         bmi270_internal_status;
                 int16_t         acc_x;
                 int16_t         acc_y;
                 int16_t         acc_z;
@@ -104,6 +117,7 @@ void     cb_uartTxDone(void);
 uint8_t  cb_uartRxCb(void);
 
 void     assemble_adv_name_packet(void);
+void     init_bmi270(void);
 void     update_bmi270_sample(void);
 void     send_next_adv_packet(void);
 
@@ -128,13 +142,7 @@ int mote_main(void) {
     uart_setCallbacks(cb_uartTxDone,cb_uartRxCb);
     uart_enableInterrupts();
 
-    // prepare BMI270. WHO_AM_I should read 0x24.
-    i2c_set_addr(BMI270_ADDR);
-    app_vars.bmi270_who_am_i = bmi270_who_am_i();
-    if (app_vars.bmi270_who_am_i==BMI270_CHIPID) {
-        app_vars.bmi270_present = TRUE;
-        bmi270_default_config();
-    }
+    init_bmi270();
 
     // add callback functions radio
     radio_setStartFrameCb(cb_startFrame);
@@ -315,7 +323,7 @@ void assemble_adv_name_packet(void) {
     memset( app_vars.packet, 0x00, sizeof(app_vars.packet) );
 
     app_vars.packet[i++]  = 0x40;               // BLE ADV_IND, random AdvA
-    app_vars.packet[i++]  = 0x1c;               // Payload length
+    app_vars.packet[i++]  = 0x1f;               // Payload length
     app_vars.packet[i++]  = ble_device_addr[0]; // BLE adv address byte 0
     app_vars.packet[i++]  = ble_device_addr[1]; // BLE adv address byte 1
     app_vars.packet[i++]  = ble_device_addr[2]; // BLE adv address byte 2
@@ -333,11 +341,14 @@ void assemble_adv_name_packet(void) {
         app_vars.packet[i++] = ble_device_name[j];
     }
 
-    app_vars.packet[i++]  = 0x0a;               // Manufacturer AD length
+    app_vars.packet[i++]  = 0x0d;               // Manufacturer AD length
     app_vars.packet[i++]  = 0xff;               // Manufacturer Specific Data type
     app_vars.packet[i++]  = 0xff;               // Company ID LSB, test value
     app_vars.packet[i++]  = 0xff;               // Company ID MSB, test value
     app_vars.packet[i++]  = app_vars.bmi270_who_am_i;
+    app_vars.packet[i++]  = app_vars.bmi270_diag;
+    app_vars.packet[i++]  = app_vars.bmi270_status;
+    app_vars.packet[i++]  = app_vars.bmi270_internal_status;
     app_vars.packet[i++]  = (uint8_t)((acc_x >> 0) & 0x00ff);
     app_vars.packet[i++]  = (uint8_t)((acc_x >> 8) & 0x00ff);
     app_vars.packet[i++]  = (uint8_t)((acc_y >> 0) & 0x00ff);
@@ -348,7 +359,52 @@ void assemble_adv_name_packet(void) {
     app_vars.packet_len   = i;
 }
 
+void init_bmi270(void) {
+
+    app_vars.bmi270_addr = BMI270_ADDR;
+    i2c_set_addr(app_vars.bmi270_addr);
+    app_vars.bmi270_who_am_i = bmi270_who_am_i();
+    app_vars.bmi270_read_ok = (bmi270_last_i2c_result()!=0);
+
+    if (app_vars.bmi270_who_am_i!=BMI270_CHIPID) {
+        app_vars.bmi270_addr = BMI270_ADDR_ALT;
+        i2c_set_addr(app_vars.bmi270_addr);
+        app_vars.bmi270_who_am_i = bmi270_who_am_i();
+        app_vars.bmi270_read_ok = (bmi270_last_i2c_result()!=0);
+    }
+
+    if (app_vars.bmi270_who_am_i==BMI270_CHIPID) {
+        app_vars.bmi270_present = TRUE;
+        bmi270_default_config();
+        app_vars.bmi270_status = bmi270_get_status();
+        app_vars.bmi270_error_reg = bmi270_get_errorreg();
+        app_vars.bmi270_internal_status = bmi270_get_internal_status();
+    }
+
+    app_vars.bmi270_diag = 0;
+    if (app_vars.bmi270_present==TRUE) {
+        app_vars.bmi270_diag |= BMI270_DIAG_PRESENT | BMI270_DIAG_CHIPID_OK;
+    }
+    if (app_vars.bmi270_read_ok==TRUE) {
+        app_vars.bmi270_diag |= BMI270_DIAG_READ_OK;
+    }
+    if (app_vars.bmi270_addr==BMI270_ADDR_ALT) {
+        app_vars.bmi270_diag |= BMI270_DIAG_ALT_ADDR;
+    }
+    if ((app_vars.bmi270_internal_status & 0x0f)==BMI270_INTERNAL_STATUS_INIT_OK) {
+        app_vars.bmi270_diag |= BMI270_DIAG_INIT_OK;
+    }
+}
+
 void update_bmi270_sample(void) {
+
+    app_vars.bmi270_diag = 0;
+    if (app_vars.bmi270_present==TRUE) {
+        app_vars.bmi270_diag |= BMI270_DIAG_PRESENT | BMI270_DIAG_CHIPID_OK;
+    }
+    if (app_vars.bmi270_addr==BMI270_ADDR_ALT) {
+        app_vars.bmi270_diag |= BMI270_DIAG_ALT_ADDR;
+    }
 
     if (app_vars.bmi270_present==FALSE) {
         app_vars.acc_x = 0;
@@ -357,11 +413,26 @@ void update_bmi270_sample(void) {
         return;
     }
 
-    i2c_set_addr(BMI270_ADDR);
-    bmi270_read_6dof_data();
-    app_vars.acc_x = bmi270_read_acc_x();
-    app_vars.acc_y = bmi270_read_acc_y();
-    app_vars.acc_z = bmi270_read_acc_z();
+    i2c_set_addr(app_vars.bmi270_addr);
+    app_vars.bmi270_read_ok = (bmi270_read_6dof_data()!=0);
+
+    if (app_vars.bmi270_read_ok==TRUE) {
+        app_vars.bmi270_diag |= BMI270_DIAG_READ_OK;
+        app_vars.acc_x = bmi270_read_acc_x();
+        app_vars.acc_y = bmi270_read_acc_y();
+        app_vars.acc_z = bmi270_read_acc_z();
+    } else {
+        app_vars.acc_x = 0;
+        app_vars.acc_y = 0;
+        app_vars.acc_z = 0;
+    }
+
+    app_vars.bmi270_status = bmi270_get_status();
+    app_vars.bmi270_error_reg = bmi270_get_errorreg();
+    app_vars.bmi270_internal_status = bmi270_get_internal_status();
+    if ((app_vars.bmi270_internal_status & 0x0f)==BMI270_INTERNAL_STATUS_INIT_OK) {
+        app_vars.bmi270_diag |= BMI270_DIAG_INIT_OK;
+    }
 }
 
 void send_next_adv_packet(void) {

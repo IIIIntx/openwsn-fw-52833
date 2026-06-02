@@ -116,6 +116,9 @@
 #define BMI270_CMD_FIFO_FLUSH               0xb0
 #define BMI270_CMD_GYR_SELF_TEST            0x03
 
+#define BMI270_INIT_CTRL_LOAD_DONE          0x01
+#define BMI270_INTERNAL_STATUS_INIT_OK      0x01
+
 #define BMI270_PWR_CONF_ADV_POWER_SAVE      0x01
 #define BMI270_PWR_CONF_PERF_MODE           0x00
 
@@ -197,9 +200,12 @@ void    bmi270_acc_config(uint8_t config);
 void    bmi270_gyr_config(uint8_t config);
 void    bmi270_acc_range(uint8_t range);
 void    bmi270_gyr_range(uint8_t range);
-void    bmi270_default_config(void);
+uint8_t bmi270_default_config(void);
 
 // read
+uint32_t bmi270_last_i2c_result(void);
+uint32_t bmi270_read_6dof_data(void);
+
 int16_t bmi270_read_temperature(void);
 
 int16_t bmi270_read_acc_x(void);
@@ -209,8 +215,6 @@ int16_t bmi270_read_acc_z(void);
 int16_t bmi270_read_gyr_x(void);
 int16_t bmi270_read_gyr_y(void);
 int16_t bmi270_read_gyr_z(void);
-
-void    bmi270_read_6dof_data(void);
 
 //=========================== private =========================================
 
