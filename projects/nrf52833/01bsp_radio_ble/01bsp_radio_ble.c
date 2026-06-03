@@ -34,6 +34,7 @@ end of frame event), it will turn on its error LED.
 
 #define NUM_SAMPLES     SAMPLE_MAXCNT
 #define LEN_UART_BUFFER ((NUM_SAMPLES*4)+8)
+#define LEN_UART_IMU_FRAME 14
 
 #define ENABLE_DF       0
 
@@ -99,9 +100,11 @@ typedef struct {
                 int16_t         acc_x;
                 int16_t         acc_y;
                 int16_t         acc_z;
+                uint8_t         imu_uart_seq;
                 uint32_t        sample_buffer[NUM_SAMPLES];
                 uint8_t         uart_buffer_to_send[LEN_UART_BUFFER];
                 uint16_t        uart_lastTxByteIndex;
+                uint16_t        uart_tx_len;
      volatile   uint8_t         uartDone;
 } app_vars_t;
 
@@ -119,6 +122,7 @@ uint8_t  cb_uartRxCb(void);
 void     assemble_adv_name_packet(void);
 void     init_bmi270(void);
 void     update_bmi270_sample(void);
+void     send_imu_uart_frame(void);
 void     send_next_adv_packet(void);
 
 //=========================== main ============================================
@@ -245,6 +249,8 @@ int mote_main(void) {
                             app_vars.uart_buffer_to_send[4*i+7]     = 0xff;
 
                             app_vars.uart_lastTxByteIndex = 0;
+                            app_vars.uart_tx_len = LEN_UART_BUFFER;
+                            app_vars.uartDone = 0;
                             uart_writeByte(app_vars.uart_buffer_to_send[0]);
                         }
 
@@ -297,6 +303,7 @@ int mote_main(void) {
                 } else if (app_vars.state==APP_STATE_RX) {
                     app_vars.adv_channel_index = 0;
                     update_bmi270_sample();
+                    send_imu_uart_frame();
                     send_next_adv_packet();
                 }
 
@@ -452,6 +459,48 @@ void send_next_adv_packet(void) {
     radio_txNow();
 }
 
+void send_imu_uart_frame(void) {
+
+    uint8_t checksum;
+    uint8_t i;
+    uint16_t acc_x;
+    uint16_t acc_y;
+    uint16_t acc_z;
+
+    if (app_vars.uartDone==0 && app_vars.uart_tx_len!=0) {
+        return;
+    }
+
+    acc_x = (uint16_t)app_vars.acc_x;
+    acc_y = (uint16_t)app_vars.acc_y;
+    acc_z = (uint16_t)app_vars.acc_z;
+
+    app_vars.uart_buffer_to_send[0]  = 0xaa;
+    app_vars.uart_buffer_to_send[1]  = 0x55;
+    app_vars.uart_buffer_to_send[2]  = app_vars.imu_uart_seq++;
+    app_vars.uart_buffer_to_send[3]  = app_vars.bmi270_who_am_i;
+    app_vars.uart_buffer_to_send[4]  = app_vars.bmi270_diag;
+    app_vars.uart_buffer_to_send[5]  = app_vars.bmi270_status;
+    app_vars.uart_buffer_to_send[6]  = app_vars.bmi270_internal_status;
+    app_vars.uart_buffer_to_send[7]  = (uint8_t)((acc_x >> 0) & 0x00ff);
+    app_vars.uart_buffer_to_send[8]  = (uint8_t)((acc_x >> 8) & 0x00ff);
+    app_vars.uart_buffer_to_send[9]  = (uint8_t)((acc_y >> 0) & 0x00ff);
+    app_vars.uart_buffer_to_send[10] = (uint8_t)((acc_y >> 8) & 0x00ff);
+    app_vars.uart_buffer_to_send[11] = (uint8_t)((acc_z >> 0) & 0x00ff);
+    app_vars.uart_buffer_to_send[12] = (uint8_t)((acc_z >> 8) & 0x00ff);
+
+    checksum = 0;
+    for (i=0;i<LEN_UART_IMU_FRAME-1;i++) {
+        checksum ^= app_vars.uart_buffer_to_send[i];
+    }
+    app_vars.uart_buffer_to_send[13] = checksum;
+
+    app_vars.uart_lastTxByteIndex = 0;
+    app_vars.uart_tx_len = LEN_UART_IMU_FRAME;
+    app_vars.uartDone = 0;
+    uart_writeByte(app_vars.uart_buffer_to_send[0]);
+}
+
 //=========================== callbacks =======================================
 
 void cb_startFrame(PORT_TIMER_WIDTH timestamp) {
@@ -481,9 +530,10 @@ void cb_timer(void) {
 void cb_uartTxDone(void) {
 
    app_vars.uart_lastTxByteIndex++;
-   if (app_vars.uart_lastTxByteIndex<LEN_UART_BUFFER) {
+   if (app_vars.uart_lastTxByteIndex<app_vars.uart_tx_len) {
       uart_writeByte(app_vars.uart_buffer_to_send[app_vars.uart_lastTxByteIndex]);
    } else {
+      app_vars.uart_tx_len = 0;
       app_vars.uartDone = 1;
    }
 }

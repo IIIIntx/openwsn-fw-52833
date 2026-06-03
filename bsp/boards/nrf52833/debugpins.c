@@ -15,9 +15,9 @@
 #define PIN_FRAME         NRF_GPIO_PIN_MAP(0,3)     // p0.3
 #define PIN_SLOT          NRF_GPIO_PIN_MAP(0,4)     // p0.4
 #define PIN_FSM           NRF_GPIO_PIN_MAP(0,28)    // p0.28
-#define PIN_TASK          NRF_GPIO_PIN_MAP(0,29)    // p0.29
-#define PIN_ISR           NRF_GPIO_PIN_MAP(0,30)    // p0.30
-#define PIN_RADIO         NRF_GPIO_PIN_MAP(0,31)    // p0.31
+#define PIN_TASK          NRF_GPIO_PIN_MAP(0,22)    // p0.22
+#define PIN_ISR           NRF_GPIO_PIN_MAP(0,23)    // p0.23
+#define PIN_RADIO         NRF_GPIO_PIN_MAP(0,24)    // p0.24
 #define PIN_ISRUART_TX    NRF_GPIO_PIN_MAP(0,11)    // p0.11
 #define PIN_ISRUART_RX    NRF_GPIO_PIN_MAP(0,12)    // p0.12
 #define PIN_INTDISABLED   NRF_GPIO_PIN_MAP(0,25)    // p0.25
