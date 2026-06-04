@@ -39,8 +39,7 @@
 
 #define BLE_ACCESS_ADDR           0x8E89BED6  // the actual address is 0xD6, 0xBE, 0x89, 0x8E
 
-#define RADIO_TXPOWER             4 // in 2-complement format, +4 dBm
-#define CLOCK_START_TIMEOUT       0x00ffffff
+#define RADIO_TXPOWER             0 // in 2-complement format, +4 dBm
 
 // the maxmium should be ((1<<14)-1), but need larger .bss size
 #define MAX_IQSAMPLES            ((1<<8)-1)
@@ -62,7 +61,6 @@ radio_vars_t radio_vars;
 
 extern void nrf_gpio_cfg_output(uint8_t port_number, uint32_t pin_number);
 
-void start_hfclk(void);
 uint32_t ble_channel_to_frequency(uint8_t channel);
 
 //=========================== public ==========================================
@@ -176,7 +174,7 @@ uint32_t radio_get_frequency(void) {
 
 void radio_rfOn(void) {
 
-    start_hfclk();
+    board_start_hfclk();
 
     // power on radio
     NRF_RADIO->POWER = ((uint32_t)(1)) << RADIO_POWER_POWER_POS;
@@ -200,6 +198,8 @@ void radio_rfOff(void) {
     // wiggle debug pin
     debugpins_radio_clr();
     leds_radio_off();
+
+    board_stop_hfclk();
 
     radio_vars.state  = RADIOSTATE_RFOFF;
 }
@@ -320,25 +320,6 @@ void radio_get_crc(uint8_t* crc24){
     crc24[0] = (uint8_t)((crc & 0x00ff0000) >> 16);
     crc24[1] = (uint8_t)((crc & 0x0000ff00) >> 8);
     crc24[2] = (uint8_t)((crc & 0x000000ff) >> 0);
-}
-
-//=========================== private =========================================
-
-void start_hfclk(void) {
-    
-    uint32_t timeout;
-
-    if ((NRF_CLOCK->HFCLKSTAT & CLOCK_HFCLKSTAT_STATE_Msk)!=0) {
-        return;
-    }
-
-    NRF_CLOCK->EVENTS_HFCLKSTARTED = 0;
-    NRF_CLOCK->TASKS_HFCLKSTART    = 1;
-
-    timeout = CLOCK_START_TIMEOUT;
-    while ((NRF_CLOCK->EVENTS_HFCLKSTARTED == 0) && (timeout > 0)) {
-        timeout--;
-    }
 }
 
 // TI BOOSTXL-AOA antenna pin mapping

@@ -48,7 +48,7 @@ const static uint8_t ble_device_addr[6] = {
 };
 
 const static uint8_t ble_adv_channels[3] = {
-    37, 38, 39
+    37
 };
 
 const static uint8_t ble_device_name[] = {
@@ -263,11 +263,12 @@ int mote_main(void) {
                     case APP_STATE_TX:
                         // done sending a packet
 
+                        radio_rfOff();
+
                         if (app_vars.adv_channel_index<sizeof(ble_adv_channels)) {
                             app_vars.flags |= APP_FLAG_SEND_NEXT;
                         } else {
                             // sleep until the next advertising event
-                            radio_rfOff();
                             app_vars.state = APP_STATE_RX;
                             app_vars.adv_channel_index = 0;
                             sctimer_setCompare(sctimer_readCounter()+get_adv_period_ticks());
