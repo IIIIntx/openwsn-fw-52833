@@ -34,7 +34,7 @@ int main(void) {
 
 void board_init(void) {
 
-    clocks_start();
+    board_start_hfclk();
 
     // initialize bsp modules
     debugpins_init();
@@ -58,6 +58,14 @@ void board_reset(void) {
     // todo
 
     NVIC_SystemReset();
+}
+
+void board_start_hfclk(void) {
+    clocks_start();
+}
+
+void board_stop_hfclk(void) {
+    NRF_CLOCK->TASKS_HFCLKSTOP = (uint32_t)1;
 }
 
 //=========================== private =========================================

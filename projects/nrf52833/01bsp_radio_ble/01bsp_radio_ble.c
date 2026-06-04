@@ -57,7 +57,7 @@ const static uint8_t ble_device_name[] = {
 
 volatile bool     g_bmi271_enabled = FALSE;
 volatile uint32_t g_adv_interval_s = 30;
-volatile uint32_t g_startup_sleep_s = 60;
+volatile uint32_t g_startup_sleep_s = 10;
 
 //=========================== variables =======================================
 

@@ -41,6 +41,7 @@ typedef struct {
 //=========================== prototypes ======================================
 
 void nrf_gpio_cfg_input(uint32_t pin_number);
+static void i2c_gpio_cfg_disconnected(uint32_t pin_number);
 static void i2c_gpio_cfg_output(uint32_t pin_number, uint8_t value);
 uint8_t i2c_wait_event(volatile uint32_t* event);
 void i2c_recover_from_error(void);
@@ -88,6 +89,18 @@ void i2c_init(void) {
 #endif
 
     NRF_TWIM0->ENABLE = (TWIM_ENABLE_ENABLE_Enabled << TWIM_ENABLE_ENABLE_Pos);
+}
+
+void i2c_disable(void) {
+
+    NRF_TWIM0->TASKS_STOP = (uint32_t)1;
+    NRF_TWIM0->ENABLE     = (TWIM_ENABLE_ENABLE_Disabled << TWIM_ENABLE_ENABLE_Pos);
+    NRF_TWIM0->PSEL.SCL   = 0xffffffff;
+    NRF_TWIM0->PSEL.SDA   = 0xffffffff;
+
+    i2c_gpio_cfg_disconnected(DOF10_SCL_PIN);
+    i2c_gpio_cfg_disconnected(DOF10_SDA_PIN);
+    i2c_gpio_cfg_disconnected(DOF10_SA0_PIN);
 }
 
 void i2c_set_addr(uint8_t address) {
@@ -234,6 +247,29 @@ void nrf_gpio_cfg_input(uint32_t pin_number) {
         | ((uint32_t)GPIO_PIN_CNF_INPUT_Connect << GPIO_PIN_CNF_INPUT_Pos)
         | ((uint32_t)GPIO_PIN_CNF_PULL_Pullup << GPIO_PIN_CNF_PULL_Pos)
         | ((uint32_t)GPIO_PIN_CNF_DRIVE_S0D1 << GPIO_PIN_CNF_DRIVE_Pos)
+        | ((uint32_t)GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos);
+}
+
+static void i2c_gpio_cfg_disconnected(uint32_t pin_number) {
+
+    NRF_GPIO_Type* NRF_Px_port;
+    uint32_t       nrf_pin_number;
+
+    if (pin_number < 32) {
+
+        NRF_Px_port     = NRF_P0;
+        nrf_pin_number  = pin_number;
+    } else {
+
+        NRF_Px_port = NRF_P1;
+        nrf_pin_number  = pin_number & 0x1f;
+    }
+
+    NRF_Px_port->PIN_CNF[nrf_pin_number]  = \
+            ((uint32_t)GPIO_PIN_CNF_DIR_Input << GPIO_PIN_CNF_DIR_Pos)
+        | ((uint32_t)GPIO_PIN_CNF_INPUT_Disconnect << GPIO_PIN_CNF_INPUT_Pos)
+        | ((uint32_t)GPIO_PIN_CNF_PULL_Disabled << GPIO_PIN_CNF_PULL_Pos)
+        | ((uint32_t)GPIO_PIN_CNF_DRIVE_S0S1 << GPIO_PIN_CNF_DRIVE_Pos)
         | ((uint32_t)GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos);
 }
 

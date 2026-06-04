@@ -101,6 +101,35 @@ void uart_init(void) {
 
 }
 
+void uart_disable(void) {
+
+    uart_disableInterrupts();
+
+    NRF_UART0->TASKS_STOPRX = (uint32_t)1;
+    NRF_UART0->TASKS_STOPTX = (uint32_t)1;
+    NRF_UART0->ENABLE       = (uint32_t)UART_ENABLE_ENABLE_Disabled;
+    NRF_UART0->PSEL.RXD     = 0xffffffff;
+    NRF_UART0->PSEL.TXD     = 0xffffffff;
+
+    NVIC->ICER[((uint32_t)UARTE0_UART0_IRQn)>>5] =
+       ((uint32_t)1) << ( ((uint32_t)UARTE0_UART0_IRQn) & 0x1f);
+    NVIC->ICPR[((uint32_t)UARTE0_UART0_IRQn)>>5] =
+       ((uint32_t)1) << ( ((uint32_t)UARTE0_UART0_IRQn) & 0x1f);
+
+    NRF_P0->PIN_CNF[UART_RX_PIN] =
+          ((uint32_t)GPIO_PIN_CNF_DIR_Input << GPIO_PIN_CNF_DIR_Pos)
+        | ((uint32_t)GPIO_PIN_CNF_INPUT_Disconnect << GPIO_PIN_CNF_INPUT_Pos)
+        | ((uint32_t)GPIO_PIN_CNF_PULL_Disabled << GPIO_PIN_CNF_PULL_Pos)
+        | ((uint32_t)GPIO_PIN_CNF_DRIVE_S0S1 << GPIO_PIN_CNF_DRIVE_Pos)
+        | ((uint32_t)GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos);
+    NRF_P0->PIN_CNF[UART_TX_PIN] =
+          ((uint32_t)GPIO_PIN_CNF_DIR_Input << GPIO_PIN_CNF_DIR_Pos)
+        | ((uint32_t)GPIO_PIN_CNF_INPUT_Disconnect << GPIO_PIN_CNF_INPUT_Pos)
+        | ((uint32_t)GPIO_PIN_CNF_PULL_Disabled << GPIO_PIN_CNF_PULL_Pos)
+        | ((uint32_t)GPIO_PIN_CNF_DRIVE_S0S1 << GPIO_PIN_CNF_DRIVE_Pos)
+        | ((uint32_t)GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos);
+}
+
 void uart_setCallbacks(uart_tx_cbt txCb, uart_rx_cbt rxCb) {
     uart_vars.txCb = txCb;
     uart_vars.rxCb = rxCb;
