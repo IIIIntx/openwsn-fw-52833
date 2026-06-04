@@ -29,8 +29,8 @@ end of frame event), it will turn on its error LED.
 //=========================== defines =========================================
 
 #define LENGTH_PACKET   38             ///< S0 + length + BLE advertising payload
-#define ADV_PERIOD          32768       ///< 1s @32kHz
-#define RADIO_BLINK_PERIOD  (0xffff>>6)
+#define SCTIMER_TICKS_PER_SECOND 32768UL
+#define ADV_INTERVAL_MAX_S       511UL
 
 #define NUM_SAMPLES     SAMPLE_MAXCNT
 #define LEN_UART_BUFFER ((NUM_SAMPLES*4)+8)
@@ -54,6 +54,10 @@ const static uint8_t ble_adv_channels[3] = {
 const static uint8_t ble_device_name[] = {
     'n', 'o', 'r', 'd', 'i', 'c'
 };
+
+volatile bool     g_bmi271_enabled = FALSE;
+volatile uint32_t g_adv_interval_s = 30;
+volatile uint32_t g_startup_sleep_s = 60;
 
 //=========================== variables =======================================
 
@@ -87,7 +91,6 @@ typedef struct {
                 bool            rxpk_crc;
                 uint16_t        num_samples;
                 uint8_t         adv_channel_index;
-                bool            radio_led_blinking;
                 bool            bmi270_present;
                 bool            bmi270_read_ok;
                 uint8_t         bmi270_addr;
@@ -117,6 +120,9 @@ void     cb_uartTxDone(void);
 uint8_t  cb_uartRxCb(void);
 
 void     assemble_adv_name_packet(void);
+PORT_TIMER_WIDTH get_adv_period_ticks(void);
+PORT_TIMER_WIDTH get_startup_sleep_ticks(void);
+void     startup_lowpower_sleep(void);
 void     init_bmi270(void);
 void     update_bmi270_sample(void);
 void     send_next_adv_packet(void);
@@ -132,8 +138,18 @@ int mote_main(void) {
     // clear local variables
     memset(&app_vars,0,sizeof(app_vars_t));
 
-    // initialize board
+    // keep only the RTC running during the startup low-power sleep
+    sctimer_init();
+    sctimer_set_callback(cb_timer);
+    sctimer_enable();
+    startup_lowpower_sleep();
+
+    // initialize board after the startup low-power sleep
     board_init();
+
+    // board_init reinitializes the timer, so restore the app callback
+    sctimer_set_callback(cb_timer);
+    sctimer_enable();
 
 #if ENABLE_DF == 1
     radio_configure_direction_finding_antenna_switch();
@@ -148,14 +164,6 @@ int mote_main(void) {
     radio_setStartFrameCb(cb_startFrame);
     radio_setEndFrameCb(cb_endFrame);
 
-    // start bsp timer
-    sctimer_set_callback(cb_timer);
-    sctimer_setCompare(sctimer_readCounter()+ADV_PERIOD);
-    sctimer_enable();
-
-    // prepare radio
-    radio_rfOn();
-
 #if ENABLE_DF == 1
     radio_configure_direction_finding_manual();
 #endif
@@ -163,7 +171,7 @@ int mote_main(void) {
     // stay idle between advertising packets
     app_vars.state = APP_STATE_RX;
 
-    // start by a transmit
+    // start by a transmit after the startup low-power sleep
     app_vars.flags |= APP_FLAG_TIMER;
 
     while (1) {
@@ -251,9 +259,6 @@ int mote_main(void) {
                         // led
                         leds_error_off();
           
-                        // continue to listen
-                        radio_rxEnable();
-                        radio_rxNow();
                         break;
                     case APP_STATE_TX:
                         // done sending a packet
@@ -261,12 +266,11 @@ int mote_main(void) {
                         if (app_vars.adv_channel_index<sizeof(ble_adv_channels)) {
                             app_vars.flags |= APP_FLAG_SEND_NEXT;
                         } else {
-                            // show one visible P1.09 pulse after the 37/38/39 advertising event
+                            // sleep until the next advertising event
+                            radio_rfOff();
                             app_vars.state = APP_STATE_RX;
                             app_vars.adv_channel_index = 0;
-                            leds_radio_on();
-                            app_vars.radio_led_blinking = TRUE;
-                            sctimer_setCompare(sctimer_readCounter()+RADIO_BLINK_PERIOD);
+                            sctimer_setCompare(sctimer_readCounter()+get_adv_period_ticks());
                             // led
                             leds_sync_off();
                         }
@@ -290,11 +294,7 @@ int mote_main(void) {
             if (app_vars.flags & APP_FLAG_TIMER) {
                 // timer fired
 
-                if (app_vars.radio_led_blinking==TRUE) {
-                    leds_radio_off();
-                    app_vars.radio_led_blinking = FALSE;
-                    sctimer_setCompare(sctimer_readCounter()+ADV_PERIOD);
-                } else if (app_vars.state==APP_STATE_RX) {
+                if (app_vars.state==APP_STATE_RX) {
                     app_vars.adv_channel_index = 0;
                     update_bmi270_sample();
                     send_next_adv_packet();
@@ -345,21 +345,82 @@ void assemble_adv_name_packet(void) {
     app_vars.packet[i++]  = 0xff;               // Manufacturer Specific Data type
     app_vars.packet[i++]  = 0xff;               // Company ID LSB, test value
     app_vars.packet[i++]  = 0xff;               // Company ID MSB, test value
-    app_vars.packet[i++]  = app_vars.bmi270_who_am_i;
-    app_vars.packet[i++]  = app_vars.bmi270_diag;
-    app_vars.packet[i++]  = app_vars.bmi270_status;
-    app_vars.packet[i++]  = app_vars.bmi270_internal_status;
-    app_vars.packet[i++]  = (uint8_t)((acc_x >> 0) & 0x00ff);
-    app_vars.packet[i++]  = (uint8_t)((acc_x >> 8) & 0x00ff);
-    app_vars.packet[i++]  = (uint8_t)((acc_y >> 0) & 0x00ff);
-    app_vars.packet[i++]  = (uint8_t)((acc_y >> 8) & 0x00ff);
-    app_vars.packet[i++]  = (uint8_t)((acc_z >> 0) & 0x00ff);
-    app_vars.packet[i++]  = (uint8_t)((acc_z >> 8) & 0x00ff);
+    if (g_bmi271_enabled==TRUE) {
+        app_vars.packet[i++]  = app_vars.bmi270_who_am_i;
+        app_vars.packet[i++]  = app_vars.bmi270_diag;
+        app_vars.packet[i++]  = app_vars.bmi270_status;
+        app_vars.packet[i++]  = app_vars.bmi270_internal_status;
+        app_vars.packet[i++]  = (uint8_t)((acc_x >> 0) & 0x00ff);
+        app_vars.packet[i++]  = (uint8_t)((acc_x >> 8) & 0x00ff);
+        app_vars.packet[i++]  = (uint8_t)((acc_y >> 0) & 0x00ff);
+        app_vars.packet[i++]  = (uint8_t)((acc_y >> 8) & 0x00ff);
+        app_vars.packet[i++]  = (uint8_t)((acc_z >> 0) & 0x00ff);
+        app_vars.packet[i++]  = (uint8_t)((acc_z >> 8) & 0x00ff);
+    } else {
+        for (j=0;j<10;j++) {
+            app_vars.packet[i++] = 0xaa;
+        }
+    }
 
     app_vars.packet_len   = i;
 }
 
+PORT_TIMER_WIDTH get_adv_period_ticks(void) {
+    uint32_t interval_s;
+
+    interval_s = g_adv_interval_s;
+    if (interval_s==0) {
+        interval_s = 1;
+    }
+    if (interval_s>ADV_INTERVAL_MAX_S) {
+        interval_s = ADV_INTERVAL_MAX_S;
+    }
+
+    return (PORT_TIMER_WIDTH)(interval_s*SCTIMER_TICKS_PER_SECOND);
+}
+
+PORT_TIMER_WIDTH get_startup_sleep_ticks(void) {
+    uint32_t startup_sleep_s;
+
+    startup_sleep_s = g_startup_sleep_s;
+    if (startup_sleep_s>ADV_INTERVAL_MAX_S) {
+        startup_sleep_s = ADV_INTERVAL_MAX_S;
+    }
+
+    return (PORT_TIMER_WIDTH)(startup_sleep_s*SCTIMER_TICKS_PER_SECOND);
+}
+
+void startup_lowpower_sleep(void) {
+
+    if (g_startup_sleep_s==0) {
+        return;
+    }
+
+    app_vars.flags &= ~APP_FLAG_TIMER;
+    sctimer_setCompare(sctimer_readCounter()+get_startup_sleep_ticks());
+
+    while ((app_vars.flags & APP_FLAG_TIMER)==0) {
+        board_sleep();
+    }
+    app_vars.flags &= ~APP_FLAG_TIMER;
+
+}
+
 void init_bmi270(void) {
+
+    if (g_bmi271_enabled==FALSE) {
+        app_vars.bmi270_present = FALSE;
+        app_vars.bmi270_read_ok = FALSE;
+        app_vars.bmi270_diag = 0;
+        app_vars.bmi270_who_am_i = 0;
+        app_vars.bmi270_status = 0;
+        app_vars.bmi270_error_reg = 0;
+        app_vars.bmi270_internal_status = 0;
+        app_vars.acc_x = 0;
+        app_vars.acc_y = 0;
+        app_vars.acc_z = 0;
+        return;
+    }
 
     app_vars.bmi270_addr = BMI270_ADDR;
     i2c_set_addr(app_vars.bmi270_addr);
@@ -397,6 +458,20 @@ void init_bmi270(void) {
 }
 
 void update_bmi270_sample(void) {
+
+    if (g_bmi271_enabled==FALSE) {
+        app_vars.bmi270_present = FALSE;
+        app_vars.bmi270_read_ok = FALSE;
+        app_vars.bmi270_diag = 0;
+        app_vars.bmi270_who_am_i = 0;
+        app_vars.bmi270_status = 0;
+        app_vars.bmi270_error_reg = 0;
+        app_vars.bmi270_internal_status = 0;
+        app_vars.acc_x = 0;
+        app_vars.acc_y = 0;
+        app_vars.acc_z = 0;
+        return;
+    }
 
     app_vars.bmi270_diag = 0;
     if (app_vars.bmi270_present==TRUE) {
@@ -438,6 +513,8 @@ void update_bmi270_sample(void) {
 void send_next_adv_packet(void) {
 
     assemble_adv_name_packet();
+
+    radio_rfOn();
 
     radio_setFrequency(
         ble_adv_channels[app_vars.adv_channel_index],

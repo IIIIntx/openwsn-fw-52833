@@ -47,7 +47,11 @@ void board_init(void) {
 }
 
 void board_sleep(void) {
-    // todo
+    NRF_POWER->TASKS_LOWPWR    = (uint32_t)1;
+
+    __SEV();
+    __WFE();
+    __WFE();
 }
 
 void board_reset(void) {

@@ -20,6 +20,7 @@
 #define LFCLK_SRC_RC          0x0 // RC oscillator 
 #define LFCLK_SRC_XTAL        0x1 // crystal oscillator
 #define LFCLK_SRC_SYNTH       0x2 // synthesized from HFCLK
+#define LFCLK_SRC_SELECTED    LFCLK_SRC_RC
 #define LFCLK_STATE_RUNNING_MASK   ((uint32_t)(0x01))<<16
 
 // RTC
@@ -68,8 +69,9 @@ void sctimer_init(void){
       (NRF_CLOCK->LFCLKSTAT & LFCLK_STATE_RUNNING_MASK)
     );
 
-    // configure the source
-    NRF_CLOCK->LFCLKSRC = (uint32_t)LFCLK_SRC_XTAL;
+    // configure the source. LFRC keeps startup System ON sleep low-power and
+    // avoids waiting for the external 32kHz crystal before the capacitor is full.
+    NRF_CLOCK->LFCLKSRC = (uint32_t)LFCLK_SRC_SELECTED;
 
     // start LFCLK
     NRF_CLOCK->TASKS_LFCLKSTART = (uint32_t)1;
