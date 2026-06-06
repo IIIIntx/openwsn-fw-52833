@@ -230,6 +230,10 @@ void radio_txEnable(void) {
 
     radio_vars.state  = RADIOSTATE_ENABLING_TX;
 
+    NRF_RADIO->EVENTS_ADDRESS  = (uint32_t)0;
+    NRF_RADIO->EVENTS_END      = (uint32_t)0;
+    NRF_RADIO->EVENTS_PHYEND   = (uint32_t)0;
+    NRF_RADIO->EVENTS_DISABLED = (uint32_t)0;
     NRF_RADIO->EVENTS_READY = (uint32_t)0;
 
     NRF_RADIO->TASKS_TXEN = (uint32_t)1;

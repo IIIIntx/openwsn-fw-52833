@@ -62,10 +62,8 @@ volatile uint32_t g_startup_sleep_s = 10;
 //=========================== variables =======================================
 
 enum {
-    APP_FLAG_START_FRAME = 0x01,
-    APP_FLAG_END_FRAME   = 0x02,
-    APP_FLAG_TIMER       = 0x04,
-    APP_FLAG_SEND_NEXT   = 0x08,
+    APP_FLAG_END_FRAME   = 0x01,
+    APP_FLAG_TIMER       = 0x02,
 };
 
 typedef enum {
@@ -161,7 +159,6 @@ int mote_main(void) {
     init_bmi270();
 
     // add callback functions radio
-    radio_setStartFrameCb(cb_startFrame);
     radio_setEndFrameCb(cb_endFrame);
 
 #if ENABLE_DF == 1
@@ -183,29 +180,6 @@ int mote_main(void) {
 
         // handle and clear every flag
         while (app_vars.flags) {
-
-            //==== APP_FLAG_START_FRAME (TX or RX)
-            if (app_vars.flags & APP_FLAG_START_FRAME) {
-                // start of frame
-
-                switch (app_vars.state) {
-                    case APP_STATE_RX:
-                        // started receiving a packet
-
-                        // led
-                        leds_error_on();
-                        break;
-                    case APP_STATE_TX:
-                        // started sending a packet
-
-                        // led
-                        leds_sync_on();
-                    break;
-                }
-
-                // clear flag
-                app_vars.flags &= ~APP_FLAG_START_FRAME;
-            }
 
             //==== APP_FLAG_END_FRAME (TX or RX)
 
@@ -263,32 +237,22 @@ int mote_main(void) {
                     case APP_STATE_TX:
                         // done sending a packet
 
+                        if (g_bmi271_enabled==TRUE && app_vars.bmi270_present==TRUE) {
+                            bmi270_power_down();
+                        }
                         radio_rfOff();
                         i2c_disable();
 
-                        if (app_vars.adv_channel_index<sizeof(ble_adv_channels)) {
-                            app_vars.flags |= APP_FLAG_SEND_NEXT;
-                        } else {
-                            // sleep until the next advertising event
-                            app_vars.state = APP_STATE_RX;
-                            app_vars.adv_channel_index = 0;
-                            sctimer_setCompare(sctimer_readCounter()+get_adv_period_ticks());
-                            // led
-                            leds_sync_off();
-                        }
+                        // sleep until the next advertising event
+                        app_vars.state = APP_STATE_RX;
+                        app_vars.adv_channel_index = 0;
+                        sctimer_setCompare(sctimer_readCounter()+get_adv_period_ticks());
+                        // led
+                        leds_sync_off();
                         break;
                 }
                 // clear flag
                 app_vars.flags &= ~APP_FLAG_END_FRAME;
-            }
-
-            //==== APP_FLAG_SEND_NEXT
-
-            if (app_vars.flags & APP_FLAG_SEND_NEXT) {
-                send_next_adv_packet();
-
-                // clear flag
-                app_vars.flags &= ~APP_FLAG_SEND_NEXT;
             }
 
             //==== APP_FLAG_TIMER
@@ -525,7 +489,6 @@ void update_bmi270_sample(void) {
     if ((app_vars.bmi270_internal_status & 0x0f)==BMI270_INTERNAL_STATUS_INIT_OK) {
         app_vars.bmi270_diag |= BMI270_DIAG_INIT_OK;
     }
-    bmi270_power_down();
 }
 
 void send_next_adv_packet(void) {
@@ -554,9 +517,6 @@ void send_next_adv_packet(void) {
 //=========================== callbacks =======================================
 
 void cb_startFrame(PORT_TIMER_WIDTH timestamp) {
-    // set flag
-    app_vars.flags |= APP_FLAG_START_FRAME;
-
     // update debug stats
     app_dbg.num_startFrame++;
 }

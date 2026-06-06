@@ -15,6 +15,7 @@
 #define BMI270_DELAY_SOFT_RESET_CYCLES      200000
 #define BMI270_DELAY_CONFIG_LOAD_CYCLES     400000
 #define BMI270_DELAY_POLL_CYCLES            50000
+#define BMI270_DELAY_POWER_ON_CYCLES        800
 
 typedef struct{
 
@@ -101,6 +102,7 @@ void bmi270_power_on(void) {
 
     bmi270_write_reg(BMI270_REG_ADDR_PWR_CONF, power_conf);
     bmi270_write_reg(BMI270_REG_ADDR_PWR_CTRL, power_ctrl);
+    bmi270_delay(BMI270_DELAY_POWER_ON_CYCLES);
 }
 
 void bmi270_power_down(void) {
