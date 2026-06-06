@@ -47,7 +47,7 @@ const static uint8_t ble_device_addr[6] = {
     0xaa, 0xbb, 0xcc, 0xcc, 0xbb, 0xea
 };
 
-const static uint8_t ble_adv_channels[3] = {
+const static uint8_t ble_adv_channels[] = {
     37
 };
 
@@ -56,7 +56,7 @@ const static uint8_t ble_device_name[] = {
 };
 
 volatile bool     g_bmi271_enabled = TRUE;
-volatile uint32_t g_adv_interval_s = 30;
+volatile uint32_t g_adv_interval_s = 10;
 volatile uint32_t g_startup_sleep_s = 10;
 
 //=========================== variables =======================================
@@ -155,8 +155,8 @@ int mote_main(void) {
     radio_configure_direction_finding_antenna_switch();
 
 #endif
-    uart_setCallbacks(cb_uartTxDone,cb_uartRxCb);
-    uart_enableInterrupts();
+    // uart_setCallbacks(cb_uartTxDone,cb_uartRxCb);
+    // uart_enableInterrupts();
 
     init_bmi270();
 
@@ -264,6 +264,7 @@ int mote_main(void) {
                         // done sending a packet
 
                         radio_rfOff();
+                        i2c_disable();
 
                         if (app_vars.adv_channel_index<sizeof(ble_adv_channels)) {
                             app_vars.flags |= APP_FLAG_SEND_NEXT;
@@ -297,7 +298,6 @@ int mote_main(void) {
 
                 if (app_vars.state==APP_STATE_RX) {
                     app_vars.adv_channel_index = 0;
-                    update_bmi270_sample();
                     send_next_adv_packet();
                 }
 
@@ -410,6 +410,12 @@ void startup_lowpower_sleep(void) {
 void init_bmi270(void) {
 
     if (g_bmi271_enabled==FALSE) {
+        i2c_init();
+        i2c_set_addr(BMI270_ADDR);
+        bmi270_power_down();
+        i2c_set_addr(BMI270_ADDR_ALT);
+        bmi270_power_down();
+        i2c_disable();
         app_vars.bmi270_present = FALSE;
         app_vars.bmi270_read_ok = FALSE;
         app_vars.bmi270_diag = 0;
@@ -422,6 +428,8 @@ void init_bmi270(void) {
         app_vars.acc_z = 0;
         return;
     }
+
+    i2c_init();
 
     app_vars.bmi270_addr = BMI270_ADDR;
     i2c_set_addr(app_vars.bmi270_addr);
@@ -456,11 +464,17 @@ void init_bmi270(void) {
     if ((app_vars.bmi270_internal_status & 0x0f)==BMI270_INTERNAL_STATUS_INIT_OK) {
         app_vars.bmi270_diag |= BMI270_DIAG_INIT_OK;
     }
+
+    if (app_vars.bmi270_present==TRUE) {
+        bmi270_power_down();
+    }
+    i2c_disable();
 }
 
 void update_bmi270_sample(void) {
 
     if (g_bmi271_enabled==FALSE) {
+        i2c_disable();
         app_vars.bmi270_present = FALSE;
         app_vars.bmi270_read_ok = FALSE;
         app_vars.bmi270_diag = 0;
@@ -486,10 +500,12 @@ void update_bmi270_sample(void) {
         app_vars.acc_x = 0;
         app_vars.acc_y = 0;
         app_vars.acc_z = 0;
+        i2c_disable();
         return;
     }
 
     i2c_set_addr(app_vars.bmi270_addr);
+    bmi270_power_on();
     app_vars.bmi270_read_ok = (bmi270_read_6dof_data()!=0);
 
     if (app_vars.bmi270_read_ok==TRUE) {
@@ -509,13 +525,18 @@ void update_bmi270_sample(void) {
     if ((app_vars.bmi270_internal_status & 0x0f)==BMI270_INTERNAL_STATUS_INIT_OK) {
         app_vars.bmi270_diag |= BMI270_DIAG_INIT_OK;
     }
+    bmi270_power_down();
 }
 
 void send_next_adv_packet(void) {
 
-    assemble_adv_name_packet();
-
     radio_rfOn();
+
+    if (g_bmi271_enabled==TRUE) {
+        i2c_init();
+    }
+    update_bmi270_sample();
+    assemble_adv_name_packet();
 
     radio_setFrequency(
         ble_adv_channels[app_vars.adv_channel_index],

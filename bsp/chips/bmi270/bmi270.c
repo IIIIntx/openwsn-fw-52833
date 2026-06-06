@@ -105,10 +105,13 @@ void bmi270_power_on(void) {
 
 void bmi270_power_down(void) {
 
+    uint8_t power_conf;
     uint8_t power_ctrl;
 
+    power_conf = BMI270_PWR_CONF_ADV_POWER_SAVE;
     power_ctrl = 0x00;
     bmi270_write_reg(BMI270_REG_ADDR_PWR_CTRL, power_ctrl);
+    bmi270_write_reg(BMI270_REG_ADDR_PWR_CONF, power_conf);
 }
 
 // configuration
