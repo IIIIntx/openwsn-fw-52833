@@ -18,6 +18,8 @@ end of frame event), it will turn on its error LED.
 */
 
 #include "board.h"
+#include "nrf52833.h"
+#include "nrf52833_bitfields.h"
 #include "radio.h"
 #include "leds.h"
 #include "sctimer.h"
@@ -43,6 +45,8 @@ end of frame event), it will turn on its error LED.
 #define BMI270_DIAG_ALT_ADDR      0x08
 #define BMI270_DIAG_INIT_OK       0x10
 
+#define BLE_ADV_LED_PIN           9
+
 const static uint8_t ble_device_addr[6] = { 
     0xaa, 0xbb, 0xcc, 0xcc, 0xbb, 0xea
 };
@@ -56,7 +60,8 @@ const static uint8_t ble_device_name[] = {
 };
 
 volatile bool     g_bmi271_enabled = TRUE;
-volatile uint32_t g_adv_interval_s = 10;
+volatile bool     g_led_enabled = TRUE;
+volatile uint32_t g_adv_interval_s = 5;
 volatile uint32_t g_startup_sleep_s = 10;
 
 //=========================== variables =======================================
@@ -230,9 +235,6 @@ int mote_main(void) {
                             uart_writeByte(app_vars.uart_buffer_to_send[0]);
                         }
 
-                        // led
-                        leds_error_off();
-          
                         break;
                     case APP_STATE_TX:
                         // done sending a packet
@@ -242,13 +244,20 @@ int mote_main(void) {
                         }
                         radio_rfOff();
                         i2c_disable();
+                        if (g_led_enabled==TRUE) {
+                            NRF_P1->OUTCLR = (uint32_t)1 << BLE_ADV_LED_PIN;
+                            NRF_P1->PIN_CNF[BLE_ADV_LED_PIN] =
+                                  ((uint32_t)GPIO_PIN_CNF_DIR_Input << GPIO_PIN_CNF_DIR_Pos)
+                                | ((uint32_t)GPIO_PIN_CNF_INPUT_Disconnect << GPIO_PIN_CNF_INPUT_Pos)
+                                | ((uint32_t)GPIO_PIN_CNF_PULL_Disabled << GPIO_PIN_CNF_PULL_Pos)
+                                | ((uint32_t)GPIO_PIN_CNF_DRIVE_S0S1 << GPIO_PIN_CNF_DRIVE_Pos)
+                                | ((uint32_t)GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos);
+                        }
 
                         // sleep until the next advertising event
                         app_vars.state = APP_STATE_RX;
                         app_vars.adv_channel_index = 0;
                         sctimer_setCompare(sctimer_readCounter()+get_adv_period_ticks());
-                        // led
-                        leds_sync_off();
                         break;
                 }
                 // clear flag
@@ -408,8 +417,7 @@ void init_bmi270(void) {
     }
 
     if (app_vars.bmi270_who_am_i==BMI270_CHIPID) {
-        app_vars.bmi270_present = TRUE;
-        bmi270_default_config();
+        app_vars.bmi270_present = (bmi270_default_config()!=0);
         app_vars.bmi270_status = bmi270_get_status();
         app_vars.bmi270_error_reg = bmi270_get_errorreg();
         app_vars.bmi270_internal_status = bmi270_get_internal_status();
@@ -437,6 +445,8 @@ void init_bmi270(void) {
 
 void update_bmi270_sample(void) {
 
+    bool bmi270_was_present;
+
     if (g_bmi271_enabled==FALSE) {
         i2c_disable();
         app_vars.bmi270_present = FALSE;
@@ -450,6 +460,34 @@ void update_bmi270_sample(void) {
         app_vars.acc_y = 0;
         app_vars.acc_z = 0;
         return;
+    }
+
+    bmi270_was_present = app_vars.bmi270_present;
+
+    if (
+        (app_vars.bmi270_present==FALSE) ||
+        (app_vars.bmi270_read_ok==FALSE) ||
+        ((app_vars.bmi270_internal_status & 0x0f)!=BMI270_INTERNAL_STATUS_INIT_OK)
+    ) {
+        app_vars.bmi270_addr = BMI270_ADDR;
+        i2c_set_addr(app_vars.bmi270_addr);
+        app_vars.bmi270_who_am_i = bmi270_who_am_i();
+        app_vars.bmi270_read_ok = (bmi270_last_i2c_result()!=0);
+
+        if (app_vars.bmi270_who_am_i!=BMI270_CHIPID) {
+            app_vars.bmi270_addr = BMI270_ADDR_ALT;
+            i2c_set_addr(app_vars.bmi270_addr);
+            app_vars.bmi270_who_am_i = bmi270_who_am_i();
+            app_vars.bmi270_read_ok = (bmi270_last_i2c_result()!=0);
+        }
+
+        if (app_vars.bmi270_who_am_i==BMI270_CHIPID) {
+            app_vars.bmi270_present = (bmi270_default_config()!=0);
+            bmi270_was_present = FALSE;
+            app_vars.bmi270_status = bmi270_get_status();
+            app_vars.bmi270_error_reg = bmi270_get_errorreg();
+            app_vars.bmi270_internal_status = bmi270_get_internal_status();
+        }
     }
 
     app_vars.bmi270_diag = 0;
@@ -469,7 +507,9 @@ void update_bmi270_sample(void) {
     }
 
     i2c_set_addr(app_vars.bmi270_addr);
-    bmi270_power_on();
+    if (bmi270_was_present==TRUE) {
+        bmi270_power_on();
+    }
     app_vars.bmi270_read_ok = (bmi270_read_6dof_data()!=0);
 
     if (app_vars.bmi270_read_ok==TRUE) {
@@ -498,6 +538,16 @@ void send_next_adv_packet(void) {
     if (g_bmi271_enabled==TRUE) {
         i2c_init();
     }
+    if (g_led_enabled==TRUE) {
+        NRF_P1->OUTCLR = (uint32_t)1 << BLE_ADV_LED_PIN;
+        NRF_P1->PIN_CNF[BLE_ADV_LED_PIN] =
+              ((uint32_t)GPIO_PIN_CNF_DIR_Output << GPIO_PIN_CNF_DIR_Pos)
+            | ((uint32_t)GPIO_PIN_CNF_INPUT_Disconnect << GPIO_PIN_CNF_INPUT_Pos)
+            | ((uint32_t)GPIO_PIN_CNF_PULL_Disabled << GPIO_PIN_CNF_PULL_Pos)
+            | ((uint32_t)GPIO_PIN_CNF_DRIVE_S0S1 << GPIO_PIN_CNF_DRIVE_Pos)
+            | ((uint32_t)GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos);
+        NRF_P1->OUTSET = (uint32_t)1 << BLE_ADV_LED_PIN;
+    }
     update_bmi270_sample();
     assemble_adv_name_packet();
 
@@ -509,7 +559,6 @@ void send_next_adv_packet(void) {
 
     radio_loadPacket(app_vars.packet,app_vars.packet_len);
     radio_txEnable();
-    leds_radio_off();
     app_vars.state = APP_STATE_TX;
     radio_txNow();
 }
