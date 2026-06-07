@@ -95,7 +95,7 @@
       debug_target_connection="J-Link"
       link_linker_script_file="../../../bsp/boards/nrf52833/sdk/nrf52833_xxaa.ld"
       linker_output_format="hex"
-      linker_section_placements_segments="FLASH1 RX 0x00000000 0x00100000;RAM1 RWX 0x20000000 0x00040000"
+      linker_section_placements_segments="FLASH RX 0x00027000 0x00051000;RAM RWX 0x20004000 0x0001C000"
       project_directory="01bsp_radio_ble"
       project_type="Executable" />
     <configuration
@@ -150,6 +150,9 @@
       filter="*.h"
       path="../../../inc"
       recurse="Yes" />
+    <configuration
+      Name="Release"
+      linker_section_placements_segments="FLASH1 RX 0x0000000 0x00100000;RAM1 RWX 0x20000000 0x00040000" />
   </project>
   <project Name="01bsp_hornet_monitor">
     <configuration

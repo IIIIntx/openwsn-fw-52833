@@ -46,9 +46,9 @@ int mote_main(void) {uint8_t i;
    
    
    // debug LED functions
-   //leds_debug_on();          some_delay();
-   //leds_debug_off();         some_delay();
-   //leds_debug_toggle();      some_delay();
+   leds_debug_on();          some_delay();
+   leds_debug_off();         some_delay();
+   leds_debug_toggle();      some_delay();
    
    // all LED functions
    leds_all_off();           some_delay();

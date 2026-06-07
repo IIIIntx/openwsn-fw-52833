@@ -30,7 +30,7 @@ end of frame event), it will turn on its error LED.
 
 //=========================== defines =========================================
 
-#define LENGTH_PACKET   38             ///< S0 + length + BLE advertising payload
+#define LENGTH_PACKET   37             ///< S0 + length + BLE advertising payload
 #define SCTIMER_TICKS_PER_SECOND 32768UL
 #define SCTIMER_TIMERMASK        0x00ffffffUL
 #define ADV_INTERVAL_MAX_S       511UL
@@ -65,8 +65,8 @@ const static uint8_t ble_device_name[] = {
 
 volatile bool     g_bmi271_enabled = TRUE;
 volatile bool     g_led_enabled = TRUE;
-volatile uint32_t g_adv_interval_s = 10;
-volatile uint32_t g_startup_sleep_s = 2;
+volatile uint32_t g_adv_interval_s = 1;
+volatile uint32_t g_startup_sleep_s = 1;
 
 //=========================== variables =======================================
 
@@ -260,43 +260,20 @@ int mote_main(void) {
                         }
                         radio_rfOff();
                         i2c_disable();
-                        now = sctimer_readCounter();
-                        app_vars.next_adv_time = now+get_adv_period_ticks();
-                        if ((g_led_enabled==TRUE) && (app_vars.led_on==TRUE)) {
+                        if (g_led_enabled==TRUE) {
+                            NRF_P1->OUTCLR = (uint32_t)1 << BLE_ADV_LED_PIN;
                             NRF_P1->PIN_CNF[BLE_ADV_LED_PIN] =
-                                  ((uint32_t)GPIO_PIN_CNF_DIR_Output << GPIO_PIN_CNF_DIR_Pos)
+                                  ((uint32_t)GPIO_PIN_CNF_DIR_Input << GPIO_PIN_CNF_DIR_Pos)
                                 | ((uint32_t)GPIO_PIN_CNF_INPUT_Disconnect << GPIO_PIN_CNF_INPUT_Pos)
                                 | ((uint32_t)GPIO_PIN_CNF_PULL_Disabled << GPIO_PIN_CNF_PULL_Pos)
                                 | ((uint32_t)GPIO_PIN_CNF_DRIVE_S0S1 << GPIO_PIN_CNF_DRIVE_Pos)
                                 | ((uint32_t)GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos);
-                            NRF_P1->OUTSET = (uint32_t)1 << BLE_ADV_LED_PIN;
-                            if (((app_vars.next_adv_time-app_vars.led_off_time) & SCTIMER_TIMERMASK) < (SCTIMER_TIMERMASK/2)) {
-                                app_vars.timer_event = APP_TIMER_LED_OFF;
-                                sctimer_setCompare(app_vars.led_off_time);
-                            } else {
-                                app_vars.timer_event = APP_TIMER_ADV;
-                                sctimer_setCompare(app_vars.next_adv_time);
-                            }
-                        } else {
-                            app_vars.led_on = FALSE;
-                            if (g_led_enabled==TRUE) {
-                                app_vars.next_led_time = now+BLE_IDLE_LED_OFF_TICKS;
-                                if (((app_vars.next_adv_time-app_vars.next_led_time) & SCTIMER_TIMERMASK) < (SCTIMER_TIMERMASK/2)) {
-                                    app_vars.timer_event = APP_TIMER_LED_ON;
-                                    sctimer_setCompare(app_vars.next_led_time);
-                                } else {
-                                    app_vars.timer_event = APP_TIMER_ADV;
-                                    sctimer_setCompare(app_vars.next_adv_time);
-                                }
-                            } else {
-                                app_vars.timer_event = APP_TIMER_ADV;
-                                sctimer_setCompare(app_vars.next_adv_time);
-                            }
                         }
 
                         // sleep until the next advertising event
                         app_vars.state = APP_STATE_RX;
                         app_vars.adv_channel_index = 0;
+                        sctimer_setCompare(sctimer_readCounter()+get_adv_period_ticks());
                         break;
                 }
                 // clear flag
@@ -615,13 +592,14 @@ void send_next_adv_packet(void) {
     }
     if (g_led_enabled==TRUE) {
         NRF_P1->OUTCLR = (uint32_t)1 << BLE_ADV_LED_PIN;
-        app_vars.led_on = FALSE;
+
         NRF_P1->PIN_CNF[BLE_ADV_LED_PIN] =
               ((uint32_t)GPIO_PIN_CNF_DIR_Output << GPIO_PIN_CNF_DIR_Pos)
             | ((uint32_t)GPIO_PIN_CNF_INPUT_Disconnect << GPIO_PIN_CNF_INPUT_Pos)
             | ((uint32_t)GPIO_PIN_CNF_PULL_Disabled << GPIO_PIN_CNF_PULL_Pos)
             | ((uint32_t)GPIO_PIN_CNF_DRIVE_S0S1 << GPIO_PIN_CNF_DRIVE_Pos)
             | ((uint32_t)GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos);
+
     }
     update_bmi270_sample();
     assemble_adv_name_packet();

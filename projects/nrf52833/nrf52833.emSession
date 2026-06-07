@@ -49,8 +49,18 @@
   <ProjectSessionItem path="nrf52833;01bsp_radio_ble;bsp"/>
   <ProjectSessionItem path="nrf52833;01bsp_radio_ble;bsp;board"/>
   <ProjectSessionItem path="nrf52833;01bsp_radio_ble;bsp;board;nrf52833"/>
+  <ProjectSessionItem path="nrf52833;01bsp_radio_ble;bsp;board;nrf52833;sdk"/>
+  <ProjectSessionItem path="nrf52833;01bsp_radio_ble;bsp;chips"/>
+  <ProjectSessionItem path="nrf52833;01bsp_radio_ble;bsp;chips;bmi270"/>
   <ProjectSessionItem path="nrf52833;01bsp_radio_tx"/>
   <ProjectSessionItem path="nrf52833;01bsp_radio_tx;application"/>
+  <ProjectSessionItem path="nrf52833;01bsp_timer"/>
+  <ProjectSessionItem path="nrf52833;01bsp_timer;application"/>
+  <ProjectSessionItem path="nrf52833;03oos_openwsn"/>
+  <ProjectSessionItem path="nrf52833;03oos_openwsn;application"/>
+  <ProjectSessionItem path="nrf52833;03oos_openwsn;bsp"/>
+  <ProjectSessionItem path="nrf52833;03oos_openwsn;bsp;sdk"/>
+  <ProjectSessionItem path="nrf52833;03oos_openwsn;openstack"/>
  </Project>
  <Register1>
   <RegisterWindow visibleNodes="CPU - Current Context/r0;CPU - Current Context/r1;CPU - Current Context/r2;CPU - Current Context/r3;CPU - Current Context/r4;CPU - Current Context/r5;CPU - Current Context/r6;CPU - Current Context/r7;CPU - Current Context/r8;CPU - Current Context/r9;CPU - Current Context/r10;CPU - Current Context/r11;CPU - Current Context/r12;CPU - Current Context/sp(r13);CPU - Current Context/lr(r14);CPU - Current Context/pc(r15);CPU - Current Context/apsr;CPU/r0;CPU/r1;CPU/r2;CPU/r3;CPU/r4;CPU/r5;CPU/r6;CPU/r7;CPU/r8;CPU/r9;CPU/r10;CPU/r11;CPU/r12;CPU/sp(r13);CPU/lr(r14);CPU/pc(r15);CPU/xpsr;CPU/MSP;CPU/PSP;CPU/PRIMASK;CPU/BASEPRI;CPU/FAULTMASK;CPU/CONTROL;CPU/internal" binaryNodes="" asciiNodes="" openNodes="CPU - Current Context" name=" 01bsp_leds" decimalNodes="" octalNodes="" unsignedNodes=""/>
@@ -105,15 +115,21 @@
   <Watches active="0" update="Never"/>
  </Watch4>
  <Files>
-  <SessionOpenFile windowGroup="DockEditLeft" x="5" y="85" useTextEdit="1" openedFrom="D:/Nordic/nRF5_SDK/atomic-openwsn-fw/projects/common/01bsp_i2c/01bsp_i2c.c" useBinaryEdit="0" left="0" path="../../bsp/boards/nrf52833/i2c.c" selected="0" top="54" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="5" y="50" useTextEdit="1" openedFrom="D:/Nordic/nRF5_SDK/atomic-openwsn-fw/projects/common/01bsp_i2c/01bsp_i2c.c" useBinaryEdit="0" left="0" path="../../bsp/boards/nrf52833/i2c.c" selected="0" top="22" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="0" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../bsp/boards/i2c.h" selected="0" top="0" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="14" y="49" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../common/01bsp_i2c/01bsp_i2c.c" selected="0" top="15" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="26" y="66" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="D:/segger/include/string.h" selected="0" top="36" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="3" y="27" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../common/01bsp_leds/01bsp_leds.c" selected="0" top="27" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="14" y="74" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="01bsp_radio_tx/01bsp_radio_tx.c" selected="0" top="129" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="18" y="137" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="01bsp_radio_ble/01bsp_radio_ble.c" selected="1" top="113" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="16" y="25" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../common/01bsp_leds/01bsp_leds.c" selected="0" top="0" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="14" y="74" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="01bsp_radio_tx/01bsp_radio_tx.c" selected="0" top="38" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="3" y="0" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="01bsp_radio_ble/01bsp_radio_ble.c" selected="0" top="0" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="16" y="34" useTextEdit="1" openedFrom="D:/SchoolTasks/SCuMRobot/WindData/52833Node/atomic-openwsn-fw-develop/projects/common/01bsp_leds/01bsp_leds.c" useBinaryEdit="0" left="0" path="../../bsp/boards/leds.h" selected="0" top="28" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="13" y="16" useTextEdit="1" openedFrom="D:/SchoolTasks/SCuMRobot/WindData/52833Node/atomic-openwsn-fw-develop/bsp/boards/leds.h" useBinaryEdit="0" left="0" path="../../bsp/boards/nrf52833/leds.c" selected="0" top="59" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="8" y="16" useTextEdit="1" openedFrom="D:/SchoolTasks/SCuMRobot/WindData/52833Node/atomic-openwsn-fw-develop/bsp/boards/nrf52833/board.c" useBinaryEdit="0" left="0" path="../../bsp/boards/nrf52833/leds.c" selected="0" top="0" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="11" y="17" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../common/03oos_openwsn/03oos_openwsn.c" selected="0" top="0" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="12" y="11" useTextEdit="1" openedFrom="D:/SchoolTasks/SCuMRobot/WindData/52833Node/atomic-openwsn-fw-develop/projects/nrf52833/01bsp_radio_ble/01bsp_radio_ble.c" useBinaryEdit="0" left="0" path="../../bsp/boards/nrf52833/board.c" selected="0" top="0" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="5" y="53" useTextEdit="1" openedFrom="D:/SchoolTasks/SCuMRobot/WindData/52833Node/atomic-openwsn-fw-develop/projects/common/03oos_openwsn/03oos_openwsn.c" useBinaryEdit="0" left="0" path="../../openstack/openstack.c" selected="0" top="44" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="18" y="1003" useTextEdit="1" openedFrom="D:/SchoolTasks/SCuMRobot/WindData/52833Node/atomic-openwsn-fw-develop/bsp/boards/nrf52833/board.c" useBinaryEdit="0" left="0" path="../../bsp/boards/nrf52833/sdk/nrf52833.h" selected="0" top="984" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="8" y="6940" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../bsp/boards/nrf52833/sdk/nrf52833_bitfields.h" selected="0" top="6936" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="5" y="174" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../bsp/boards/nrf52833/radio.c" selected="0" top="162" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="9" y="15" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="01bsp_timer/01bsp_timer.c" selected="1" top="0" codecName="Default"/>
  </Files>
  <ARMCrossStudioWindow activeProject="01bsp_radio_ble" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="Debug" sessionSettings="" debugSearchFileMap="" fileDialogInitialDirectory="" debugSearchPath="" autoConnectCapabilities="3711"/>
 </session>
