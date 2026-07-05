@@ -11,7 +11,7 @@
 #include "debugpins.h"
 #include "leds.h"
 #include "radio_df.h"
-#include "timer.h"
+
 //=========================== defines =========================================
 
 #define RADIO_POWER_POWER_POS       0
@@ -39,12 +39,11 @@
 
 #define BLE_ACCESS_ADDR           0x8E89BED6  // the actual address is 0xD6, 0xBE, 0x89, 0x8E
 
-#define RADIO_TXPOWER             0xe2 // in 2-compilant format  0xec == -20db
+#define RADIO_TXPOWER             0 // in 2-complement format, +4 dBm
 
 // the maxmium should be ((1<<14)-1), but need larger .bss size
-#define MAX_IQSAMPLES            0x58
+#define MAX_IQSAMPLES            ((1<<8)-1)
 
-#define DEBUG_RADIO_PIN 11
 //=========================== variables =======================================
 
 typedef struct {
@@ -174,8 +173,9 @@ uint32_t radio_get_frequency(void) {
 }
 
 void radio_rfOn(void) {
-    
-    clocks_start();
+
+    board_start_hfclk();
+
     // power on radio
     NRF_RADIO->POWER = ((uint32_t)(1)) << RADIO_POWER_POWER_POS;
 
@@ -186,18 +186,22 @@ void radio_rfOff(void) {
 
     radio_vars.state  = RADIOSTATE_TURNING_OFF;
 
-    NRF_RADIO->EVENTS_DISABLED = 0;
+    if (NRF_RADIO->STATE != STATE_DISABLED) {
+        NRF_RADIO->EVENTS_DISABLED = 0;
 
-    // stop radio
-    NRF_RADIO->TASKS_DISABLE = (uint32_t)(1);
+        // stop radio
+        NRF_RADIO->TASKS_DISABLE = (uint32_t)(1);
 
-    while(NRF_RADIO->EVENTS_DISABLED==0);
+        while(NRF_RADIO->EVENTS_DISABLED==0);
+    }
 
     // wiggle debug pin
     debugpins_radio_clr();
     leds_radio_off();
-    radio_vars.state  = RADIOSTATE_RFOFF;
 
+    board_stop_hfclk();
+
+    radio_vars.state  = RADIOSTATE_RFOFF;
 }
 
 int8_t radio_getFrequencyOffset(void){
@@ -226,6 +230,10 @@ void radio_txEnable(void) {
 
     radio_vars.state  = RADIOSTATE_ENABLING_TX;
 
+    NRF_RADIO->EVENTS_ADDRESS  = (uint32_t)0;
+    NRF_RADIO->EVENTS_END      = (uint32_t)0;
+    NRF_RADIO->EVENTS_PHYEND   = (uint32_t)0;
+    NRF_RADIO->EVENTS_DISABLED = (uint32_t)0;
     NRF_RADIO->EVENTS_READY = (uint32_t)0;
 
     NRF_RADIO->TASKS_TXEN = (uint32_t)1;
@@ -318,8 +326,6 @@ void radio_get_crc(uint8_t* crc24){
     crc24[2] = (uint8_t)((crc & 0x000000ff) >> 0);
 }
 
-//=========================== private =========================================
-
 // TI BOOSTXL-AOA antenna pin mapping
 
 //  VALUE   DIO27   DIO28   DIO29   DIO30   Antenna
@@ -355,12 +361,12 @@ void radio_configure_direction_finding_antenna_switch(void) {
     NRF_RADIO->TASKS_DISABLE = (uint32_t)1;
     while(NRF_RADIO->EVENTS_DISABLED == 0);
 
-    //nrf_gpio_cfg_output(ANT_SWITCH_PORT,  ANT_SWITCH_PIN0);
-    //nrf_gpio_cfg_output(ANT_SWITCH_PORT,  ANT_SWITCH_PIN1);
-    //nrf_gpio_cfg_output(ANT_SWITCH_PORT,  ANT_SWITCH_PIN2);
-    //nrf_gpio_cfg_output(ANT_SWITCH_PORT,  ANT_SWITCH_PIN3);
+    nrf_gpio_cfg_output(ANT_SWITCH_PORT,  ANT_SWITCH_PIN0);
+    nrf_gpio_cfg_output(ANT_SWITCH_PORT,  ANT_SWITCH_PIN1);
+    nrf_gpio_cfg_output(ANT_SWITCH_PORT,  ANT_SWITCH_PIN2);
+    nrf_gpio_cfg_output(ANT_SWITCH_PORT,  ANT_SWITCH_PIN3);
 
-    //NRF_P1->OUTCLR = 0x000003C0;
+    NRF_P1->OUTCLR = 0x000003C0;
         
     // configure GPIO pins
     NRF_RADIO->PSEL.DFEGPIO[0] = (uint32_t)(
@@ -405,12 +411,12 @@ void radio_configure_direction_finding_antenna_switch(void) {
 
 // DFECTRL1 register values
 
-#define NUMBEROF8US         12  // in unit of 8 us
+#define NUMBEROF8US         3  // in unit of 8 us
 #define DFEINEXTENSION      1  // 1:crc  0:payload
 #define TSWITCHSPACING      2  // 1:4us 2:2us 3: 1us
-#define TSAMPLESPACINGREF   3  // 1:4us 2:2us 3: 1us 4:500ns 5:250ns 6:125ns
-#define SAMPLETYPE          0  // 0: IQ  1: magPhase
-#define TSAMPLESPACING      3  // 1:4us 2:2us 3: 1us 4:500ns 5:250ns 6:125ns
+#define TSAMPLESPACINGREF   6  // 1:4us 2:2us 3: 1us 4:500ns 5:250ns 6:125ns
+#define SAMPLETYPE          1  // 0: IQ  1: magPhase
+#define TSAMPLESPACING      6  // 1:4us 2:2us 3: 1us 4:500ns 5:250ns 6:125ns
 
 // DFECTRL2 register values
 
@@ -423,32 +429,10 @@ void radio_configure_direction_finding_antenna_switch(void) {
 #define DFEOPMODE_AOD             2 //
 #define DFEOPMODE_AOA             3 //
 
-void radio_configure_direction_finding_manual_AoA(void) {
+void radio_configure_direction_finding_manual(void) {
 
     // enable direction finding in AoA mode
     NRF_RADIO->DFEMODE = (uint32_t)DFEOPMODE_AOA;
-
-    NRF_RADIO->CTEINLINECONF     = (uint32_t)0;
-
-    NRF_RADIO->DFECTRL1          = (uint32_t)(NUMBEROF8US        << 0)  | 
-                                      (uint32_t)(DFEINEXTENSION     << 7)  |
-                                      (uint32_t)(TSWITCHSPACING     << 8)  |
-                                      (uint32_t)(TSAMPLESPACINGREF  << 12) |
-                                      (uint32_t)(SAMPLETYPE         << 15) |
-                                      (uint32_t)(TSAMPLESPACING     << 16);
-
-    NRF_RADIO->DFECTRL2          = (uint32_t)(TSWITCHOFFSET      << 0)  |
-                                      (uint32_t)(TSAMPLEOFFSET      << 0);
-  
-
-    NRF_RADIO->DFEPACKET.MAXCNT  = MAX_IQSAMPLES;
-    NRF_RADIO->DFEPACKET.PTR     = (uint32_t)(&radio_vars.df_samples[0]);
-}
-
-void radio_configure_direction_finding_manual_AoD(void) {
-
-    // enable direction finding in AoA mode
-    NRF_RADIO->DFEMODE = (uint32_t)DFEOPMODE_AOD;
 
     NRF_RADIO->CTEINLINECONF     = (uint32_t)0;
 
@@ -586,15 +570,10 @@ void RADIO_IRQHandler(void) {
 //=========================== callbacks =======================================
 
 kick_scheduler_t    radio_isr(void){
-    
-    NRF_P0->OUTSET =  1 << DEBUG_RADIO_PIN;
-    NRF_P0->OUTCLR =  1 << DEBUG_RADIO_PIN;
 
     uint32_t time_stampe;
 
-    //time_stampe = NRF_RTC0->COUNTER;
-    //timer_capture_now(4);
-    //time_stampe = timer_getCapturedValue(4);
+    time_stampe = NRF_RTC0->COUNTER;
 
     // start of frame (payload)
     if (NRF_RADIO->EVENTS_ADDRESS){
@@ -612,26 +591,28 @@ kick_scheduler_t    radio_isr(void){
 
      // CTE presence
     if (NRF_RADIO->EVENTS_CTEPRESENT){
-        NRF_RADIO->EVENTS_CTEPRESENT = (uint32_t)0;
-        return KICK_SCHEDULER;
-    }
 
-    // END 
-    if (NRF_RADIO->EVENTS_END) {
-        //timer_capture_now(1);
-        NRF_RADIO->EVENTS_END = (uint32_t)0;
+        NRF_RADIO->EVENTS_CTEPRESENT = (uint32_t)0;
         return KICK_SCHEDULER;
     }
 
     // end of frame
     if (NRF_RADIO->EVENTS_PHYEND) {
-        timer_capture_now(1);
-        time_stampe = timer_getCapturedValue(1);
+        
         if (radio_vars.endFrame_cb!=NULL){
             radio_vars.endFrame_cb(time_stampe);
         }
         
+        NRF_RADIO->EVENTS_END    = (uint32_t)0;
         NRF_RADIO->EVENTS_PHYEND = (uint32_t)0;
+        radio_vars.state         = RADIOSTATE_STOPPED;
+        return KICK_SCHEDULER;
+    }
+
+    // END
+    if (NRF_RADIO->EVENTS_END) {
+
+        NRF_RADIO->EVENTS_END = (uint32_t)0;
         return KICK_SCHEDULER;
     }
     return DO_NOT_KICK_SCHEDULER;
