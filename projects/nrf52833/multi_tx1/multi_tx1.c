@@ -20,7 +20,6 @@
 #define LENGTH_PACKET   125+LENGTH_BLE_CRC  ///< maximum length is 127 bytes
 #define CHANNEL         17              ///< 0~39
 #define TIMER_PERIOD    (0xffff>>2)     ///< 0xffff = 2s@32kHz
-#define TXPOWER         0xD5            ///< 2's complement format, 0xD8 = -40dbm
 
 #define NUM_SAMPLES     SAMPLE_MAXCNT
 //#define LEN_UART_BUFFER ((NUM_SAMPLES*4)+8)
@@ -103,6 +102,7 @@ int mote_main(void) {
 
     // initialize board
     board_init();
+    leds_init();
 
     radio_rfOff();
     app_vars.state = APP_STATE_OFF;
@@ -110,7 +110,8 @@ int mote_main(void) {
     nrf_gpio_cfg_output(0, DEBUG_RADIO_PIN);
 #if ENABLE_DF == 1
     //antenna_CHW_rx_switch_init();
-    radio_configure_direction_finding_antenna_switch();
+    // Single-antenna node: no DFE GPIO antenna switching is required.
+    // radio_configure_direction_finding_antenna_switch();
     radio_configure_direction_finding_manual_AoA();
     //set_antenna_CHW_switches();
 #endif
@@ -142,6 +143,8 @@ int mote_main(void) {
 
     radio_txEnable();
     app_vars.state = APP_STATE_TX;
+    // Keep the LED off while waiting; cb_timer turns it on for the TX pulse.
+    leds_radio_off();
 
 
 
@@ -206,11 +209,15 @@ void cb_endFrame(PORT_TIMER_WIDTH timestamp) {
 
         radio_txEnable();
         app_vars.state = APP_STATE_TX;
+        // Keep the indicator off while waiting for the next TX event.
+        leds_radio_off();
     }
 }
 
 void cb_timer(void) {
     leds_error_toggle();
     app_dbg.num_timer++;
+    // Toggle once when this packet starts transmitting.
+    leds_radio_toggle();
     radio_txNow();
 }

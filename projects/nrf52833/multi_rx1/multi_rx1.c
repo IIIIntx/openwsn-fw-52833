@@ -29,7 +29,6 @@ remainder of the packet contains an incrementing bytes.
 #define LENGTH_PACKET   125+LENGTH_BLE_CRC  ///< maximum length is 127 bytes
 #define CHANNEL         17              ///< 0~39
 #define TIMER_PERIOD    (0xffff>>2)     ///< 0xffff = 2s@32kHz
-#define TXPOWER         0xD5            ///< 2's complement format, 0xD8 = -40dbm
 
 #define NUM_SAMPLES     SAMPLE_MAXCNT
 //#define LEN_UART_BUFFER ((NUM_SAMPLES*4)+8)
@@ -146,20 +145,26 @@ int mote_main(void) {
 
     // initialize board
     board_init();
+    leds_init();
     
     timer_init();
     timer_start();
     
 #if ENABLE_DF == 1
     //antenna_CHW_rx_switch_init();
-    radio_configure_direction_finding_antenna_switch();
+    // Single-antenna node: no DFE GPIO antenna switching is required.
+    // radio_configure_direction_finding_antenna_switch();
     //set_antenna_CHW_switches();
 #endif
 
+    // board_init() deliberately disables UART, so RX1 must initialize it
+    // before installing callbacks and starting interrupt-driven transmission.
+    uart_init();
     uart_setCallbacks(cb_uartTxDone,cb_uartRxCb);
     uart_enableInterrupts();
 
-    nrf_gpio_cfg_output(0, DEBUG_RADIO_PIN);
+    // P0.11 is the UART TX pin.  Do not reuse it as a radio debug GPIO.
+    // nrf_gpio_cfg_output(0, DEBUG_RADIO_PIN);
 
     // add radio callback functions
     radio_setStartFrameCb(cb_startFrame);
@@ -177,6 +182,8 @@ int mote_main(void) {
     // switch in RX by default
     radio_rxEnable();
     radio_rxNow();
+    // Keep the radio LED on while this node is listening.
+    leds_radio_on();
 
 
     while(1) {
@@ -269,7 +276,9 @@ void cb_endFrame(PORT_TIMER_WIDTH timestamp) {
 
     // update debug stats
     app_dbg.num_endFrame++;
-    
+
+    // Keep the indicator on: RX1 remains a continuous logical listener while
+    // this completed frame is processed and the radio is re-armed below.
     
     memset(&app_vars.rxpk_buf[0],0,LENGTH_PACKET);
     
@@ -287,7 +296,11 @@ void cb_endFrame(PORT_TIMER_WIDTH timestamp) {
     // check the frame is sent by radio_tx project
     expectedFrame = TRUE;
     
-    if (app_vars.rxpk_len>LENGTH_PACKET){
+    if (
+        !app_vars.rxpk_crc ||
+        app_vars.rxpk_len <= 34 ||
+        app_vars.rxpk_len > LENGTH_PACKET
+    ) {
         expectedFrame = FALSE;
     } else {
 
@@ -321,6 +334,8 @@ void cb_endFrame(PORT_TIMER_WIDTH timestamp) {
     // keep listening (needed for at86rf215 radio)
     radio_rxEnable();
     radio_rxNow();
+    // Continuous listening is active again.
+    leds_radio_on();
 
     // led
     //leds_sync_off();

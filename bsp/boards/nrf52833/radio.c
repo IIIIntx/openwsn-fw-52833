@@ -39,7 +39,7 @@
 
 #define BLE_ACCESS_ADDR           0x8E89BED6  // the actual address is 0xD6, 0xBE, 0x89, 0x8E
 
-#define RADIO_TXPOWER             0xe2 // in 2-compilant format  0xec == -20db
+#define RADIO_TXPOWER             RADIO_TXPOWER_TXPOWER_0dBm
 
 // the maxmium should be ((1<<14)-1), but need larger .bss size
 #define MAX_IQSAMPLES            0x58
@@ -586,9 +586,11 @@ void RADIO_IRQHandler(void) {
 //=========================== callbacks =======================================
 
 kick_scheduler_t    radio_isr(void){
-    
-    NRF_P0->OUTSET =  1 << DEBUG_RADIO_PIN;
-    NRF_P0->OUTCLR =  1 << DEBUG_RADIO_PIN;
+
+    // P0.11 is used by UART TX on this board.  Pulsing it here corrupts every
+    // UART frame emitted by multi_rx1, so use the debugpins ISR hooks instead.
+    // NRF_P0->OUTSET =  1 << DEBUG_RADIO_PIN;
+    // NRF_P0->OUTCLR =  1 << DEBUG_RADIO_PIN;
 
     uint32_t time_stampe;
 

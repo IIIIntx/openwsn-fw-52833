@@ -22,7 +22,6 @@
 #define LENGTH_PACKET   125+LENGTH_BLE_CRC  ///< maximum length is 127 bytes
 #define CHANNEL         17              ///< 0~39
 #define TIMER_PERIOD    (0xffff>>2)     ///< 0xffff = 2s@32kHz
-#define TXPOWER         0xD5            ///< 2's complement format, 0xD8 = -40dbm
 
 #define NUM_SAMPLES     SAMPLE_MAXCNT
 #define LEN_UART_BUFFER ((NUM_SAMPLES*4)+8)
@@ -115,6 +114,7 @@ int mote_main(void) {
 
     // initialize board
     board_init();
+    leds_init();
     debugpins_init();
 
     radio_rfOff();
@@ -124,7 +124,8 @@ int mote_main(void) {
 
 #if ENABLE_DF == 1
     //antenna_CHW_rx_switch_init();
-    radio_configure_direction_finding_antenna_switch();
+    // Single-antenna node: no DFE GPIO antenna switching is required.
+    // radio_configure_direction_finding_antenna_switch();
     radio_configure_direction_finding_manual_AoD();
     //set_antenna_CHW_switches();
 #endif
@@ -151,6 +152,10 @@ int mote_main(void) {
     radio_rxEnable();
     app_vars.state = APP_STATE_RX;
     radio_rxNow();
+    // Error LED indicates that RX listening is active.  Keep the radio LED
+    // off so its TX toggle is visible when a response packet is sent.
+    leds_radio_off();
+    leds_error_on();
 
     while(1) {
         board_sleep();
@@ -205,6 +210,9 @@ void cb_endFrame(PORT_TIMER_WIDTH timestamp) {
     app_dbg.num_endFrame++;
     
     radio_rfOff();
+    // A completed RX frame or TX frame means this node is no longer in the
+    // active listening portion of the state machine.
+    leds_error_off();
 
     if (app_vars.state == APP_STATE_RX) {
         
@@ -219,7 +227,13 @@ void cb_endFrame(PORT_TIMER_WIDTH timestamp) {
             &app_vars.rxpk_crc
         );
         
-        if (app_vars.rxpk_packet[0] == 0x42 & app_vars.rxpk_packet[1] == 0x21) {
+        if (
+            app_vars.rxpk_crc &&
+            app_vars.rxpk_packet_len >= 35 &&
+            app_vars.rxpk_packet[0] == 0x42 &&
+            app_vars.rxpk_packet[1] == 0x21 &&
+            app_vars.rxpk_packet[34] == 0x01
+        ) {
             app_vars.isTargetPkt = TRUE;      //Check if received packet is a legal plast system packet
         }
 
@@ -235,11 +249,14 @@ void cb_endFrame(PORT_TIMER_WIDTH timestamp) {
             assemble_ibeacon_packet(app_vars.pkt_sqn);
             radio_loadPacket(app_vars.packet, LENGTH_PACKET);
             
-            radio_configure_direction_finding_antenna_switch();
+            // Single-antenna node: keep DFE GPIO antenna switching disabled.
+            // radio_configure_direction_finding_antenna_switch();
             radio_configure_direction_finding_manual_AoA();
 
             radio_txEnable();
             app_vars.state = APP_STATE_TX;
+            // Wait for cb_timer to light the LED and start transmission.
+            leds_radio_off();
             return;
         } else {
             radio_rfOn();
@@ -247,6 +264,9 @@ void cb_endFrame(PORT_TIMER_WIDTH timestamp) {
             radio_setFrequency(CHANNEL, FREQ_RX);
             radio_rxEnable();
             radio_rxNow();
+            // Listening has resumed after rejecting this packet.
+            leds_radio_off();
+            leds_error_on();
         }
     }
 
@@ -257,12 +277,16 @@ void cb_endFrame(PORT_TIMER_WIDTH timestamp) {
         radio_rxEnable();
         app_vars.state = APP_STATE_RX;
         radio_rxNow();
+        // Response TX has ended and listening is active again.
+        leds_radio_off();
+        leds_error_on();
     }
 }
 
 void cb_timer(void) {
-    leds_error_toggle();
     app_dbg.num_timer++;
 
+    // RX is stopped and the LED is off, so this toggle marks response TX.
+    leds_radio_toggle();
     radio_txNow();
 }

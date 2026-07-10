@@ -88,26 +88,30 @@ uint8_t leds_sync_isOn(void) {
     }
 }
 
-//==== radio led 03
+//==== radio led
+//
+// P1.09 (LED_3) is also RADIO DFEGPIO[3] for the antenna switch.  Use
+// LED_2 on P0.05 for radio-state indication so LED writes cannot interfere
+// with direction-finding antenna control.
 
 void leds_radio_off(void) {
-    NRF_P1->OUTCLR = 1<<LED_3;
+    NRF_P0->OUTCLR = 1<<LED_2;
 }
 
 void leds_radio_on(void) {
-    NRF_P1->OUTSET = 1<<LED_3;
+    NRF_P0->OUTSET = 1<<LED_2;
 }
 
 void leds_radio_toggle(void) {
-    if ((NRF_P1->OUT & (1<<LED_3))!=0) {        
-        NRF_P1->OUTCLR = 1<<LED_3;
+    if ((NRF_P0->OUT & (1<<LED_2))!=0) {
+        NRF_P0->OUTCLR = 1<<LED_2;
     } else {
-        NRF_P1->OUTSET = 1<<LED_3;
+        NRF_P0->OUTSET = 1<<LED_2;
     }
 }
 
 uint8_t leds_radio_isOn(void) {
-    if (NRF_P1->OUT & (1<<LED_3)) {
+    if (NRF_P0->OUT & (1<<LED_2)) {
         return 0;
     } else {
         return 1;
