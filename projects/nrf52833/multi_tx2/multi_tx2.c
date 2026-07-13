@@ -250,7 +250,7 @@ void cb_endFrame(PORT_TIMER_WIDTH timestamp) {
             radio_loadPacket(app_vars.packet, LENGTH_PACKET);
             
             // Single-antenna node: keep DFE GPIO antenna switching disabled.
-            // radio_configure_direction_finding_antenna_switch();
+             //radio_configure_direction_finding_antenna_switch();
             radio_configure_direction_finding_manual_AoA();
 
             radio_txEnable();
