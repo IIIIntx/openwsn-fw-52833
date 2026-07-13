@@ -38,6 +38,15 @@ remainder of the packet contains an incrementing bytes.
 #define ENABLE_DF       1
 
 #define DEBUG_RADIO_PIN 11
+#define PAIR_TIMEOUT_TICKS  ((16000000/10)*4)  // 400 ms @ 16 MHz timer
+
+#define UART_OUTPUT_IQ_FRAME      0   // original 713-byte binary frame
+#define UART_OUTPUT_RX_SEQ_TEXT   1   // text lines for serial terminal viewer
+#define UART_TEXT_LINE_LEN        23
+#define UART_TEXT_QUEUE_LEN       4
+#ifndef UART_OUTPUT_MODE
+#define UART_OUTPUT_MODE          UART_OUTPUT_RX_SEQ_TEXT
+#endif
 
 
 uint16_t length = 0;
@@ -89,24 +98,35 @@ typedef struct {
                 uint32_t        tx2_sample_buffer[NUM_SAMPLES];
                 
                 uint8_t         uart_buffer_to_send[LEN_UART_BUFFER];
+                uint8_t         uart_pending_buffer[UART_TEXT_QUEUE_LEN][UART_TEXT_LINE_LEN];
 
                 uint16_t        uart_lastTxByteIndex;
+                uint16_t        uart_tx_len;
+     volatile   uint8_t         uart_tx_busy;
+     volatile   uint8_t         uart_pending_head;
+     volatile   uint8_t         uart_pending_tail;
+     volatile   uint8_t         uart_pending_count;
      volatile   uint8_t         uartDone;
-                uint8_t         rxpk_done;
+     volatile   uint8_t         rxpk_done;
                 uint8_t         rxpk_buf[LENGTH_PACKET];
                 uint8_t         rxpk_freq_offset;
                 uint8_t         rxpk_len;
                 uint8_t         rxpk_num;
 
-                bool            tx1_done;
-                uint8_t         tx1_packet_sqn;
-                uint32_t        tx1_done_timestamp;
+     volatile   bool            tx1_done;
+     volatile   uint8_t         tx1_packet_sqn;
+     volatile   uint32_t        tx1_done_timestamp;
+     volatile   uint16_t        tx1_num_samples;
 
-                bool            tx2_done;
-                uint8_t         tx2_packet_sqn;
-                uint32_t        tx2_done_timestamp;
+     volatile   bool            tx2_done;
+     volatile   uint8_t         tx2_packet_sqn;
+     volatile   uint32_t        tx2_done_timestamp;
+     volatile   uint16_t        tx2_num_samples;
 
                 uint32_t        time_interval;
+     volatile   uint8_t         pair_pending;
+     volatile   uint32_t        pair_start_timestamp;
+     volatile   uint8_t         led2_match_state;
 
 
                 uint8_t         uart_txFrame[LENGTH_SERIAL_FRAME];
@@ -121,6 +141,7 @@ void     cb_endFrame(PORT_TIMER_WIDTH timestamp);
 
 void     cb_uartTxDone(void);
 uint8_t  cb_uartRxCb(void);
+void     uart_write_rx_seq_text(uint8_t tx_id, uint8_t seq, uint16_t iq_num);
 
 void nrf_gpio_cfg_output(uint8_t port_number, uint32_t pin_number);
 //=========================== main ============================================
@@ -135,7 +156,7 @@ int mote_main(void) {
     uint8_t sign;
     uint8_t read;
     
-    uint8_t current_time;
+    uint32_t current_ticks;
     uint8_t antenna_id;
 
     app_vars.prob = 1;
@@ -177,13 +198,21 @@ int mote_main(void) {
 
 #if ENABLE_DF == 1
     radio_configure_direction_finding_manual_AoA();
+    memset(app_vars.tx1_sample_buffer,0,sizeof(app_vars.tx1_sample_buffer));
+    memset(app_vars.tx2_sample_buffer,0,sizeof(app_vars.tx2_sample_buffer));
+    radio_set_df_sample_buffer(app_vars.tx1_sample_buffer,NUM_SAMPLES);
 #endif
 
     // switch in RX by default
     radio_rxEnable();
     radio_rxNow();
-    // Keep the radio LED on while this node is listening.
-    leds_radio_on();
+    // RX diagnostic LEDs:
+    // - error LED toggles when a valid TX1 packet is received.
+    // - debug LED toggles when a valid TX2 packet is received.
+    // - radio LED toggles when TX1/TX2 sequence numbers are aligned.
+    leds_radio_off();
+    leds_error_off();
+    leds_debug_off();
 
 
     while(1) {
@@ -191,57 +220,89 @@ int mote_main(void) {
         // wait for timer to elapse
         app_vars.rxpk_done = 0;
         while (app_vars.rxpk_done==0) {
+            if (app_vars.pair_pending) {
+                timer_capture_now(0);
+                current_ticks = timer_getCapturedValue(0);
+                if ((current_ticks - app_vars.pair_start_timestamp) > PAIR_TIMEOUT_TICKS) {
+                    app_vars.tx1_done = 0;
+                    app_vars.tx1_packet_sqn = 0;
+                    app_vars.tx1_num_samples = 0;
+                    app_vars.tx2_done = 0;
+                    app_vars.tx2_packet_sqn = 0;
+                    app_vars.tx2_num_samples = 0;
+                    app_vars.pair_pending = 0;
+
+                    memset(app_vars.tx1_sample_buffer,0,sizeof(app_vars.tx1_sample_buffer));
+                    memset(app_vars.tx2_sample_buffer,0,sizeof(app_vars.tx2_sample_buffer));
+                    radio_set_df_sample_buffer(app_vars.tx1_sample_buffer,NUM_SAMPLES);
+                }
+            }
             continue;
         }
 
-        leds_error_toggle();
         if (app_vars.rxpk_crc && ENABLE_DF) {
             
             if (app_vars.tx1_done && app_vars.tx2_done) {
                 if (app_vars.tx1_packet_sqn == app_vars.tx2_packet_sqn) {
+                    if (
+                        app_vars.tx1_num_samples == NUM_SAMPLES &&
+                        app_vars.tx2_num_samples == NUM_SAMPLES
+                    ) {
 
-                    for (i=0;i<app_vars.num_samples;i++) {
-                        app_vars.uart_buffer_to_send[4*i+0] = (app_vars.tx1_sample_buffer[i] >>24) & 0x000000ff;
-                        app_vars.uart_buffer_to_send[4*i+1] = (app_vars.tx1_sample_buffer[i] >>16) & 0x000000ff;
-                        app_vars.uart_buffer_to_send[4*i+2] = (app_vars.tx1_sample_buffer[i] >> 8) & 0x000000ff;
-                        app_vars.uart_buffer_to_send[4*i+3] = (app_vars.tx1_sample_buffer[i] >> 0) & 0x000000ff;
+#if UART_OUTPUT_MODE == UART_OUTPUT_IQ_FRAME
+                        for (i=0;i<NUM_SAMPLES;i++) {
+                            app_vars.uart_buffer_to_send[4*i+0] = (app_vars.tx1_sample_buffer[i] >>24) & 0x000000ff;
+                            app_vars.uart_buffer_to_send[4*i+1] = (app_vars.tx1_sample_buffer[i] >>16) & 0x000000ff;
+                            app_vars.uart_buffer_to_send[4*i+2] = (app_vars.tx1_sample_buffer[i] >> 8) & 0x000000ff;
+                            app_vars.uart_buffer_to_send[4*i+3] = (app_vars.tx1_sample_buffer[i] >> 0) & 0x000000ff;
+                        }
+
+                        for (i=0;i<NUM_SAMPLES;i++) {
+                            app_vars.uart_buffer_to_send[4*i+0 + 352] = (app_vars.tx2_sample_buffer[i] >>24) & 0x000000ff;
+                            app_vars.uart_buffer_to_send[4*i+1 + 352] = (app_vars.tx2_sample_buffer[i] >>16) & 0x000000ff;
+                            app_vars.uart_buffer_to_send[4*i+2 + 352] = (app_vars.tx2_sample_buffer[i] >> 8) & 0x000000ff;
+                            app_vars.uart_buffer_to_send[4*i+3 + 352] = (app_vars.tx2_sample_buffer[i] >> 0) & 0x000000ff;
+                        }
+                        
+                        app_vars.time_interval = app_vars.tx2_done_timestamp - app_vars.tx1_done_timestamp;
+
+                        app_vars.uart_buffer_to_send[704] = (app_vars.time_interval >> 24) & 0x000000ff;
+                        app_vars.uart_buffer_to_send[705] = (app_vars.time_interval >> 16) & 0x000000ff;
+                        app_vars.uart_buffer_to_send[706] = (app_vars.time_interval >>  8) & 0x000000ff;
+                        app_vars.uart_buffer_to_send[707] = (app_vars.time_interval >>  0) & 0x000000ff;
+
+                        app_vars.uart_buffer_to_send[708] = app_vars.tx1_packet_sqn;
+                        app_vars.uart_buffer_to_send[709] = app_vars.tx2_packet_sqn;
+
+                        app_vars.uart_buffer_to_send[710]     = 0xff;
+                        app_vars.uart_buffer_to_send[711]     = 0xff; 
+                        app_vars.uart_buffer_to_send[712]     = 0xff;
+
+                        app_vars.uart_tx_len = LEN_UART_BUFFER;
+                        app_vars.uart_lastTxByteIndex = 0;
+                        app_vars.uart_tx_busy = 1;
+                        uart_writeByte(app_vars.uart_buffer_to_send[0]);
+#endif // UART_OUTPUT_MODE == UART_OUTPUT_IQ_FRAME
+
+                        app_vars.tx1_done = 0;
+                        app_vars.tx1_packet_sqn = 0;
+                        app_vars.tx1_num_samples = 0;
+                        app_vars.tx2_done = 0;
+                        app_vars.tx2_packet_sqn = 0;
+                        app_vars.tx2_num_samples = 0;
                     }
-
-                    for (i=0;i<app_vars.num_samples;i++) {
-                        app_vars.uart_buffer_to_send[4*i+0 + 352] = (app_vars.tx2_sample_buffer[i] >>24) & 0x000000ff;
-                        app_vars.uart_buffer_to_send[4*i+1 + 352] = (app_vars.tx2_sample_buffer[i] >>16) & 0x000000ff;
-                        app_vars.uart_buffer_to_send[4*i+2 + 352] = (app_vars.tx2_sample_buffer[i] >> 8) & 0x000000ff;
-                        app_vars.uart_buffer_to_send[4*i+3 + 352] = (app_vars.tx2_sample_buffer[i] >> 0) & 0x000000ff;
-                    }
-                    
-                    app_vars.time_interval = app_vars.tx2_done_timestamp - app_vars.tx1_done_timestamp;
-
-                    app_vars.uart_buffer_to_send[704] = (app_vars.time_interval >> 24) & 0x000000ff;
-                    app_vars.uart_buffer_to_send[705] = (app_vars.time_interval >> 16) & 0x000000ff;
-                    app_vars.uart_buffer_to_send[706] = (app_vars.time_interval >>  8) & 0x000000ff;
-                    app_vars.uart_buffer_to_send[707] = (app_vars.time_interval >>  0) & 0x000000ff;
-
-                    app_vars.uart_buffer_to_send[708] = app_vars.tx1_packet_sqn;
-                    app_vars.uart_buffer_to_send[709] = app_vars.tx2_packet_sqn;
-
-                    app_vars.uart_buffer_to_send[710]     = 0xff;
-                    app_vars.uart_buffer_to_send[711]     = 0xff; 
-                    app_vars.uart_buffer_to_send[712]     = 0xff;
-
-                    app_vars.uart_lastTxByteIndex = 0;
-                    
-                    leds_debug_toggle();
-                    uart_writeByte(app_vars.uart_buffer_to_send[0]);
-
-                    app_vars.tx1_done = 0;
-                    app_vars.tx1_packet_sqn = 0;
-                    app_vars.tx2_done = 0;
-                    app_vars.tx2_packet_sqn = 0;
                 } 
                 app_vars.tx1_done = 0;
                 app_vars.tx1_packet_sqn = 0;
+                app_vars.tx1_num_samples = 0;
                 app_vars.tx2_done = 0;
                 app_vars.tx2_packet_sqn = 0;
+                app_vars.tx2_num_samples = 0;
+                app_vars.pair_pending = 0;
+
+                memset(app_vars.tx1_sample_buffer,0,sizeof(app_vars.tx1_sample_buffer));
+                memset(app_vars.tx2_sample_buffer,0,sizeof(app_vars.tx2_sample_buffer));
+                radio_set_df_sample_buffer(app_vars.tx1_sample_buffer,NUM_SAMPLES);
 
             }
 
@@ -254,6 +315,55 @@ int mote_main(void) {
 
 //=========================== private =========================================
 
+void uart_write_rx_seq_text(uint8_t tx_id, uint8_t seq, uint16_t iq_num) {
+
+    uint8_t* buffer;
+
+    if (app_vars.uart_tx_busy) {
+        if (app_vars.uart_pending_count >= UART_TEXT_QUEUE_LEN) {
+            return;
+        }
+        buffer = app_vars.uart_pending_buffer[app_vars.uart_pending_tail];
+        app_vars.uart_pending_tail++;
+        if (app_vars.uart_pending_tail >= UART_TEXT_QUEUE_LEN) {
+            app_vars.uart_pending_tail = 0;
+        }
+        app_vars.uart_pending_count++;
+    } else {
+        buffer = app_vars.uart_buffer_to_send;
+        app_vars.uart_tx_len = UART_TEXT_LINE_LEN;
+        app_vars.uart_lastTxByteIndex = 0;
+        app_vars.uart_tx_busy = 1;
+    }
+
+    buffer[0]  = 'R';
+    buffer[1]  = 'X';
+    buffer[2]  = ' ';
+    buffer[3]  = 'T';
+    buffer[4]  = 'X';
+    buffer[5]  = '0' + tx_id;
+    buffer[6]  = ' ';
+    buffer[7]  = 's';
+    buffer[8]  = 'e';
+    buffer[9]  = 'q';
+    buffer[10] = '=';
+    buffer[11] = '0' + (seq / 100);
+    buffer[12] = '0' + ((seq / 10) % 10);
+    buffer[13] = '0' + (seq % 10);
+    buffer[14] = ' ';
+    buffer[15] = 'i';
+    buffer[16] = 'q';
+    buffer[17] = '=';
+    buffer[18] = '0' + ((iq_num / 100) % 10);
+    buffer[19] = '0' + ((iq_num / 10) % 10);
+    buffer[20] = '0' + (iq_num % 10);
+    buffer[21] = '\r';
+    buffer[22] = '\n';
+
+    if (buffer == app_vars.uart_buffer_to_send) {
+        uart_writeByte(app_vars.uart_buffer_to_send[0]);
+    }
+}
 
 //=========================== callbacks =======================================
 
@@ -272,10 +382,12 @@ void cb_endFrame(PORT_TIMER_WIDTH timestamp) {
     //NRF_P0->OUTCLR =  1 << DEBUG_RADIO_PIN;
 
     bool     expectedFrame;
+    bool     pair_iq_matched;
     //uint8_t  i;
 
     // update debug stats
     app_dbg.num_endFrame++;
+    pair_iq_matched = FALSE;
 
     // Keep the indicator on: RX1 remains a continuous logical listener while
     // this completed frame is processed and the radio is re-armed below.
@@ -304,25 +416,72 @@ void cb_endFrame(PORT_TIMER_WIDTH timestamp) {
         expectedFrame = FALSE;
     } else {
 
-        if(app_vars.rxpk_buf[0]!=0x42){
+        if (
+            app_vars.rxpk_buf[0] != 0x42 ||
+            app_vars.rxpk_buf[1] != 0x21
+        ) {
             expectedFrame = FALSE;
         }
     }
     
     if (expectedFrame){
 
+        if (
+            (app_vars.rxpk_buf[34] == 1 || app_vars.rxpk_buf[34] == 2) &&
+            !app_vars.pair_pending
+        ) {
+            app_vars.pair_pending = 1;
+            app_vars.pair_start_timestamp = timestamp;
+        }
+
         if (app_vars.rxpk_buf[34] == 1) {
+            // TX1 is the start of a new pairing round.  Any stored TX2 before
+            // this TX1 belongs to an older round and must not be matched with
+            // the current TX1.
+            app_vars.tx2_done = 0;
+            app_vars.tx2_packet_sqn = 0;
+            app_vars.tx2_num_samples = 0;
+            app_vars.pair_pending = 1;
+            app_vars.pair_start_timestamp = timestamp;
+
             app_vars.tx1_done = 1;
             app_vars.tx1_done_timestamp = timer_getCapturedValue(1);
             app_vars.tx1_packet_sqn = app_vars.rxpk_buf[33];
-            app_vars.num_samples = radio_get_df_samples(app_vars.tx1_sample_buffer,NUM_SAMPLES);
+            app_vars.tx1_num_samples = radio_get_df_sample_amount();
+            // Do not copy IQ here.  TX1 IQ was written directly into
+            // tx1_sample_buffer by RADIO DFEPACKET.PTR.  Point the next RX
+            // capture at tx2_sample_buffer and re-enter RX immediately.
+            radio_set_df_sample_buffer(app_vars.tx2_sample_buffer,NUM_SAMPLES);
+            radio_rxEnable();
+            radio_rxNow();
+
+            leds_error_toggle();
+#if UART_OUTPUT_MODE == UART_OUTPUT_RX_SEQ_TEXT
+            uart_write_rx_seq_text(1, app_vars.tx1_packet_sqn, app_vars.tx1_num_samples);
+#endif
         }
 
         if (app_vars.rxpk_buf[34] == 2) {
+            leds_debug_toggle();
             app_vars.tx2_done = 1;
             app_vars.tx2_done_timestamp = timer_getCapturedValue(1);
             app_vars.tx2_packet_sqn = app_vars.rxpk_buf[33];
-            app_vars.num_samples = radio_get_df_samples(app_vars.tx2_sample_buffer,NUM_SAMPLES);
+            app_vars.tx2_num_samples = radio_get_df_sample_amount();
+#if UART_OUTPUT_MODE == UART_OUTPUT_RX_SEQ_TEXT
+            uart_write_rx_seq_text(2, app_vars.tx2_packet_sqn, app_vars.tx2_num_samples);
+#endif
+            app_vars.num_samples = NUM_SAMPLES;
+            // The next useful frame should be a new TX1 packet.
+            radio_set_df_sample_buffer(app_vars.tx1_sample_buffer,NUM_SAMPLES);
+
+            if (
+                app_vars.tx1_done &&
+                app_vars.tx1_packet_sqn == app_vars.tx2_packet_sqn &&
+                app_vars.tx1_num_samples == NUM_SAMPLES &&
+                app_vars.tx2_num_samples == NUM_SAMPLES
+            ) {
+                pair_iq_matched = TRUE;
+            }
 
             app_vars.rxpk_done = 1;
         }
@@ -334,8 +493,16 @@ void cb_endFrame(PORT_TIMER_WIDTH timestamp) {
     // keep listening (needed for at86rf215 radio)
     radio_rxEnable();
     radio_rxNow();
-    // Continuous listening is active again.
-    leds_radio_on();
+    if (pair_iq_matched) {
+        app_vars.led2_match_state = !app_vars.led2_match_state;
+    }
+    // radio_rxEnable() always calls leds_radio_on().  Restore LED2 from an
+    // explicit software state so LED2 indicates pair/IQ match toggles only.
+    if (app_vars.led2_match_state) {
+        leds_radio_on();
+    } else {
+        leds_radio_off();
+    }
 
     // led
     //leds_sync_off();
@@ -345,10 +512,24 @@ void cb_endFrame(PORT_TIMER_WIDTH timestamp) {
 void cb_uartTxDone(void) {
 
    app_vars.uart_lastTxByteIndex++;
-   if (app_vars.uart_lastTxByteIndex<LEN_UART_BUFFER) {
+   if (app_vars.uart_lastTxByteIndex<app_vars.uart_tx_len) {
       uart_writeByte(app_vars.uart_buffer_to_send[app_vars.uart_lastTxByteIndex]);
    } else {
       app_vars.uartDone = 1;
+      if (app_vars.uart_pending_count) {
+         memcpy(app_vars.uart_buffer_to_send,app_vars.uart_pending_buffer[app_vars.uart_pending_head],UART_TEXT_LINE_LEN);
+         app_vars.uart_tx_len = UART_TEXT_LINE_LEN;
+         app_vars.uart_lastTxByteIndex = 0;
+         app_vars.uart_pending_head++;
+         if (app_vars.uart_pending_head >= UART_TEXT_QUEUE_LEN) {
+            app_vars.uart_pending_head = 0;
+         }
+         app_vars.uart_pending_count--;
+         app_vars.uart_tx_busy = 1;
+         uart_writeByte(app_vars.uart_buffer_to_send[0]);
+      } else {
+         app_vars.uart_tx_busy = 0;
+      }
    }
 }
 

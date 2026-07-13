@@ -526,6 +526,22 @@ uint16_t radio_get_df_samples(uint32_t* sample_buffer, uint16_t length) {
 
     return num_transfered_samples;
 }
+
+void radio_set_df_sample_buffer(uint32_t* sample_buffer, uint16_t length) {
+
+    if (sample_buffer == NULL || length == 0) {
+        return;
+    }
+
+    NRF_RADIO->DFEPACKET.MAXCNT = length;
+    NRF_RADIO->DFEPACKET.PTR    = (uint32_t)sample_buffer;
+}
+
+uint16_t radio_get_df_sample_amount(void) {
+
+    return (uint16_t)NRF_RADIO->DFEPACKET.AMOUNT;
+}
+
 void     radio_configure_switch_antenna_array(void) {
 
     if (radio_vars.array_to_use == 2) {

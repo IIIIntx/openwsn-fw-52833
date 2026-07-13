@@ -122,27 +122,27 @@ uint8_t leds_radio_isOn(void) {
 
 
 void leds_debug_off(void) {
-    //NRF_P0->OUTSET = 1<<LED_4;
+    NRF_P1->OUTCLR = 1<<LED_3;
 }
 
 void leds_debug_on(void) {
-    //NRF_P0->OUTCLR = 1<<LED_4;
+    NRF_P1->OUTSET = 1<<LED_3;
 }
 
 void leds_debug_toggle(void) {
-    //if ((NRF_P0->OUT & (1<<LED_4))!=0) {        
-    //    NRF_P0->OUTCLR = 1<<LED_4;
-    //} else {
-    //    NRF_P0->OUTSET = 1<<LED_4;
-    //}
+    if ((NRF_P1->OUT & (1<<LED_3))!=0) {
+        NRF_P1->OUTCLR = 1<<LED_3;
+    } else {
+        NRF_P1->OUTSET = 1<<LED_3;
+    }
 }
 
 uint8_t leds_debug_isOn(void) {
-    //if (NRF_P0->OUT & (1<<LED_4)) {
-    //    return 0;
-    //} else {
-    //    return 1;
-    //}
+    if (NRF_P1->OUT & (1<<LED_3)) {
+        return 0;
+    } else {
+        return 1;
+    }
 }
 
 //==== all leds
@@ -157,7 +157,7 @@ void leds_all_on(void) {
 void leds_all_off(void) {
     leds_radio_off();
     leds_sync_off();
-    //leds_debug_off();
+    leds_debug_off();
     leds_error_off();
 }
 
