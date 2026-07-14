@@ -99,8 +99,14 @@ typedef struct {
                 
                 uint8_t         uart_buffer_to_send[LEN_UART_BUFFER];
                 uint8_t         uart_pending_buffer[UART_TEXT_QUEUE_LEN][UART_TEXT_LINE_LEN];
+                uint8_t         uart_pending_buffer[UART_TEXT_QUEUE_LEN][UART_TEXT_LINE_LEN];
 
                 uint16_t        uart_lastTxByteIndex;
+                uint16_t        uart_tx_len;
+     volatile   uint8_t         uart_tx_busy;
+     volatile   uint8_t         uart_pending_head;
+     volatile   uint8_t         uart_pending_tail;
+     volatile   uint8_t         uart_pending_count;
                 uint16_t        uart_tx_len;
      volatile   uint8_t         uart_tx_busy;
      volatile   uint8_t         uart_pending_head;
@@ -201,11 +207,21 @@ int mote_main(void) {
     memset(app_vars.tx1_sample_buffer,0,sizeof(app_vars.tx1_sample_buffer));
     memset(app_vars.tx2_sample_buffer,0,sizeof(app_vars.tx2_sample_buffer));
     radio_set_df_sample_buffer(app_vars.tx1_sample_buffer,NUM_SAMPLES);
+    memset(app_vars.tx1_sample_buffer,0,sizeof(app_vars.tx1_sample_buffer));
+    memset(app_vars.tx2_sample_buffer,0,sizeof(app_vars.tx2_sample_buffer));
+    radio_set_df_sample_buffer(app_vars.tx1_sample_buffer,NUM_SAMPLES);
 #endif
 
     // switch in RX by default
     radio_rxEnable();
     radio_rxNow();
+    // RX diagnostic LEDs:
+    // - error LED toggles when a valid TX1 packet is received.
+    // - debug LED toggles when a valid TX2 packet is received.
+    // - radio LED toggles when TX1/TX2 sequence numbers are aligned.
+    leds_radio_off();
+    leds_error_off();
+    leds_debug_off();
     // RX diagnostic LEDs:
     // - error LED toggles when a valid TX1 packet is received.
     // - debug LED toggles when a valid TX2 packet is received.
@@ -220,6 +236,23 @@ int mote_main(void) {
         // wait for timer to elapse
         app_vars.rxpk_done = 0;
         while (app_vars.rxpk_done==0) {
+            if (app_vars.pair_pending) {
+                timer_capture_now(0);
+                current_ticks = timer_getCapturedValue(0);
+                if ((current_ticks - app_vars.pair_start_timestamp) > PAIR_TIMEOUT_TICKS) {
+                    app_vars.tx1_done = 0;
+                    app_vars.tx1_packet_sqn = 0;
+                    app_vars.tx1_num_samples = 0;
+                    app_vars.tx2_done = 0;
+                    app_vars.tx2_packet_sqn = 0;
+                    app_vars.tx2_num_samples = 0;
+                    app_vars.pair_pending = 0;
+
+                    memset(app_vars.tx1_sample_buffer,0,sizeof(app_vars.tx1_sample_buffer));
+                    memset(app_vars.tx2_sample_buffer,0,sizeof(app_vars.tx2_sample_buffer));
+                    radio_set_df_sample_buffer(app_vars.tx1_sample_buffer,NUM_SAMPLES);
+                }
+            }
             if (app_vars.pair_pending) {
                 timer_capture_now(0);
                 current_ticks = timer_getCapturedValue(0);
@@ -270,7 +303,13 @@ int mote_main(void) {
                         app_vars.uart_buffer_to_send[705] = (app_vars.time_interval >> 16) & 0x000000ff;
                         app_vars.uart_buffer_to_send[706] = (app_vars.time_interval >>  8) & 0x000000ff;
                         app_vars.uart_buffer_to_send[707] = (app_vars.time_interval >>  0) & 0x000000ff;
+                        app_vars.uart_buffer_to_send[704] = (app_vars.time_interval >> 24) & 0x000000ff;
+                        app_vars.uart_buffer_to_send[705] = (app_vars.time_interval >> 16) & 0x000000ff;
+                        app_vars.uart_buffer_to_send[706] = (app_vars.time_interval >>  8) & 0x000000ff;
+                        app_vars.uart_buffer_to_send[707] = (app_vars.time_interval >>  0) & 0x000000ff;
 
+                        app_vars.uart_buffer_to_send[708] = app_vars.tx1_packet_sqn;
+                        app_vars.uart_buffer_to_send[709] = app_vars.tx2_packet_sqn;
                         app_vars.uart_buffer_to_send[708] = app_vars.tx1_packet_sqn;
                         app_vars.uart_buffer_to_send[709] = app_vars.tx2_packet_sqn;
 
@@ -278,6 +317,11 @@ int mote_main(void) {
                         app_vars.uart_buffer_to_send[711]     = 0xff; 
                         app_vars.uart_buffer_to_send[712]     = 0xff;
 
+                        app_vars.uart_tx_len = LEN_UART_BUFFER;
+                        app_vars.uart_lastTxByteIndex = 0;
+                        app_vars.uart_tx_busy = 1;
+                        uart_writeByte(app_vars.uart_buffer_to_send[0]);
+#endif // UART_OUTPUT_MODE == UART_OUTPUT_IQ_FRAME
                         app_vars.uart_tx_len = LEN_UART_BUFFER;
                         app_vars.uart_lastTxByteIndex = 0;
                         app_vars.uart_tx_busy = 1;
@@ -291,12 +335,26 @@ int mote_main(void) {
                         app_vars.tx2_packet_sqn = 0;
                         app_vars.tx2_num_samples = 0;
                     }
+                        app_vars.tx1_done = 0;
+                        app_vars.tx1_packet_sqn = 0;
+                        app_vars.tx1_num_samples = 0;
+                        app_vars.tx2_done = 0;
+                        app_vars.tx2_packet_sqn = 0;
+                        app_vars.tx2_num_samples = 0;
+                    }
                 } 
                 app_vars.tx1_done = 0;
                 app_vars.tx1_packet_sqn = 0;
                 app_vars.tx1_num_samples = 0;
+                app_vars.tx1_num_samples = 0;
                 app_vars.tx2_done = 0;
                 app_vars.tx2_packet_sqn = 0;
+                app_vars.tx2_num_samples = 0;
+                app_vars.pair_pending = 0;
+
+                memset(app_vars.tx1_sample_buffer,0,sizeof(app_vars.tx1_sample_buffer));
+                memset(app_vars.tx2_sample_buffer,0,sizeof(app_vars.tx2_sample_buffer));
+                radio_set_df_sample_buffer(app_vars.tx1_sample_buffer,NUM_SAMPLES);
                 app_vars.tx2_num_samples = 0;
                 app_vars.pair_pending = 0;
 
@@ -434,7 +492,24 @@ void cb_endFrame(PORT_TIMER_WIDTH timestamp) {
             app_vars.pair_start_timestamp = timestamp;
         }
 
+        if (
+            (app_vars.rxpk_buf[34] == 1 || app_vars.rxpk_buf[34] == 2) &&
+            !app_vars.pair_pending
+        ) {
+            app_vars.pair_pending = 1;
+            app_vars.pair_start_timestamp = timestamp;
+        }
+
         if (app_vars.rxpk_buf[34] == 1) {
+            // TX1 is the start of a new pairing round.  Any stored TX2 before
+            // this TX1 belongs to an older round and must not be matched with
+            // the current TX1.
+            app_vars.tx2_done = 0;
+            app_vars.tx2_packet_sqn = 0;
+            app_vars.tx2_num_samples = 0;
+            app_vars.pair_pending = 1;
+            app_vars.pair_start_timestamp = timestamp;
+
             // TX1 is the start of a new pairing round.  Any stored TX2 before
             // this TX1 belongs to an older round and must not be matched with
             // the current TX1.
@@ -513,9 +588,24 @@ void cb_uartTxDone(void) {
 
    app_vars.uart_lastTxByteIndex++;
    if (app_vars.uart_lastTxByteIndex<app_vars.uart_tx_len) {
+   if (app_vars.uart_lastTxByteIndex<app_vars.uart_tx_len) {
       uart_writeByte(app_vars.uart_buffer_to_send[app_vars.uart_lastTxByteIndex]);
    } else {
       app_vars.uartDone = 1;
+      if (app_vars.uart_pending_count) {
+         memcpy(app_vars.uart_buffer_to_send,app_vars.uart_pending_buffer[app_vars.uart_pending_head],UART_TEXT_LINE_LEN);
+         app_vars.uart_tx_len = UART_TEXT_LINE_LEN;
+         app_vars.uart_lastTxByteIndex = 0;
+         app_vars.uart_pending_head++;
+         if (app_vars.uart_pending_head >= UART_TEXT_QUEUE_LEN) {
+            app_vars.uart_pending_head = 0;
+         }
+         app_vars.uart_pending_count--;
+         app_vars.uart_tx_busy = 1;
+         uart_writeByte(app_vars.uart_buffer_to_send[0]);
+      } else {
+         app_vars.uart_tx_busy = 0;
+      }
       if (app_vars.uart_pending_count) {
          memcpy(app_vars.uart_buffer_to_send,app_vars.uart_pending_buffer[app_vars.uart_pending_head],UART_TEXT_LINE_LEN);
          app_vars.uart_tx_len = UART_TEXT_LINE_LEN;
