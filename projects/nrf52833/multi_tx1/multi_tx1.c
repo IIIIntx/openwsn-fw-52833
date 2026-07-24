@@ -43,7 +43,7 @@ const static uint8_t ble_uuid[16]       = {
 
 #define DEBUG_RADIO_PIN 11
 
-#define SEND_DURATION     (16000000/200)*100    //5ms@ (16000000/200)
+#define SEND_DURATION     (16000000/200)*100    // start-to-start period: 500 ms
 
 //=========================== variables =======================================
 
@@ -95,8 +95,6 @@ void     nrf_gpio_cfg_output(uint8_t port_number, uint32_t pin_number);
 \brief The program starts executing here.
 */
 int mote_main(void) {
-    uint16_t i;
-
     // clear local variables
     memset(&app_vars,0,sizeof(app_vars_t));
 
@@ -112,6 +110,8 @@ int mote_main(void) {
     //antenna_CHW_rx_switch_init();
     // Single-antenna node: no DFE GPIO antenna switching is required.
     // radio_configure_direction_finding_antenna_switch();
+    // AoA TX generates the CTE without transmitter-side antenna switching.
+    // DFE GPIO switching remains disabled for this single-antenna node.
     radio_configure_direction_finding_manual_AoA();
     //set_antenna_CHW_switches();
 #endif
@@ -201,7 +201,9 @@ void cb_endFrame(PORT_TIMER_WIDTH timestamp) {
     app_dbg.num_endFrame++;
 
     if (app_vars.state == APP_STATE_TX) {
-        app_vars.time_slotStartAt = timestamp + SEND_DURATION;
+        // Advance from the previous scheduled TX start, not from PHYEND, so
+        // packet/CTE duration does not stretch the 500 ms period.
+        app_vars.time_slotStartAt += SEND_DURATION;
         timer_schedule(0, app_vars.time_slotStartAt);
         app_vars.pkt_sqn++;
         assemble_ibeacon_packet(app_vars.pkt_sqn);

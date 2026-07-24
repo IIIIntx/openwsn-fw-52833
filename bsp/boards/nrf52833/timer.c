@@ -74,6 +74,10 @@ void timer_set_callback(uint8_t compare_id, timer_cbt cb) {
 
 void timer_schedule(uint8_t compare_id, uint32_t value) {
 
+    // A compare event can remain pending when an absolute deadline is
+    // replaced (for example when TX2 re-synchronizes to TX1).  Clear it first
+    // so the old event cannot invoke the callback at the new schedule.
+    NRF_TIMER0->EVENTS_COMPARE[compare_id] = 0;
     NRF_TIMER0->CC[compare_id] = value;
 }
 

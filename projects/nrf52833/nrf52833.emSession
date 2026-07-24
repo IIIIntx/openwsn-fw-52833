@@ -47,6 +47,9 @@
   <ProjectSessionItem path="nrf52833;01bsp_radio"/>
   <ProjectSessionItem path="nrf52833;multi_rx1"/>
   <ProjectSessionItem path="nrf52833;multi_rx1;application"/>
+  <ProjectSessionItem path="nrf52833;multi_rx1;bsp"/>
+  <ProjectSessionItem path="nrf52833;multi_rx1;bsp;board"/>
+  <ProjectSessionItem path="nrf52833;multi_rx1;bsp;board;nrf52833"/>
   <ProjectSessionItem path="nrf52833;multi_rx1;inc"/>
   <ProjectSessionItem path="nrf52833;multi_tx1"/>
   <ProjectSessionItem path="nrf52833;multi_tx1;application"/>
@@ -122,13 +125,13 @@
   <SessionOpenFile windowGroup="DockEditLeft" x="5" y="53" useTextEdit="1" openedFrom="D:/SchoolTasks/SCuMRobot/WindData/52833Node/atomic-openwsn-fw-develop/projects/common/03oos_openwsn/03oos_openwsn.c" useBinaryEdit="0" left="0" path="../../openstack/openstack.c" selected="0" top="44" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="18" y="1003" useTextEdit="1" openedFrom="D:/SchoolTasks/SCuMRobot/WindData/52833Node/atomic-openwsn-fw-develop/bsp/boards/nrf52833/board.c" useBinaryEdit="0" left="0" path="../../bsp/boards/nrf52833/sdk/nrf52833.h" selected="0" top="984" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="8" y="6940" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../bsp/boards/nrf52833/sdk/nrf52833_bitfields.h" selected="0" top="6936" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="387" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../bsp/boards/nrf52833/radio.c" selected="1" top="347" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="66" y="372" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../bsp/boards/nrf52833/radio.c" selected="0" top="311" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="9" y="15" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="01bsp_timer/01bsp_timer.c" selected="0" top="0" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="10" y="256" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="multi_rx1/multi_rx1.c" selected="0" top="60" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="9" y="235" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="multi_rx1/multi_rx1.c" selected="1" top="220" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="6" y="21" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../inc/check_config.h" selected="0" top="0" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="51" y="228" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="multi_tx1/multi_tx1.c" selected="0" top="156" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="223" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="multi_tx1/multi_tx1.c" selected="0" top="156" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="15" y="252" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="multi_tx2/multi_tx2.c" selected="0" top="222" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="57" y="37" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../bsp/boards/nrf52833/radio_df.h" selected="0" top="0" codecName="Default"/>
  </Files>
- <ARMCrossStudioWindow activeProject="multi_rx1" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="Debug" sessionSettings="" debugSearchFileMap="" fileDialogInitialDirectory="" debugSearchPath="" autoConnectCapabilities="3711"/>
+ <ARMCrossStudioWindow activeProject="multi_tx2" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="Debug" sessionSettings="" debugSearchFileMap="" fileDialogInitialDirectory="" debugSearchPath="" autoConnectCapabilities="3711"/>
 </session>

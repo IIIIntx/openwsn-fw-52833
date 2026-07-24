@@ -44,8 +44,12 @@ const static uint8_t ble_uuid[16]       = {
 
 #define DEBUG_RADIO_PIN 11
 
-#define SEND_DURATION     (16000000/200)*100    //5ms@ (16000000/200)
-#define SEND_OFFSET       (16000000/5000)*1        //200us @ (16000000/5000)
+#define SEND_PERIOD_TICKS       (16000000/1000)*500  // TX2 start-to-start: 500 ms
+#define TX1_TO_TX2_START_TICKS  (16000000/1000)*5    // on-air start-to-start: 5 ms
+#define BLE1M_ADDRESS_END_TICKS (16000000/1000000)*40 // 8 us preamble + 32 us access address
+#define SYNC_OFFSET_TICKS       (TX1_TO_TX2_START_TICKS-BLE1M_ADDRESS_END_TICKS)
+#define TX_PREPARE_ADVANCE      (16000000/1000)*1    // prepare autonomous TX 1 ms early
+#define TX2_AUTONOMOUS_AFTER_SYNC 1
 
 //=========================== variables =======================================
 
@@ -89,6 +93,7 @@ typedef struct {
                 uint32_t       time_interval;
 
                 bool           isTargetPkt;
+                bool           synced;
 
 } app_vars_t;
 
@@ -100,6 +105,8 @@ void      cb_endFrame(PORT_TIMER_WIDTH timestamp);
 
 void      cb_timer(void);
 void      assemble_ibeacon_packet(uint8_t);
+void      prepare_tx_packet(uint8_t sqn);
+void      schedule_next_synced_tx(void);
 void      nrf_gpio_cfg_output(uint8_t port_number, uint32_t pin_number);
 //=========================== main ============================================
 
@@ -107,8 +114,6 @@ void      nrf_gpio_cfg_output(uint8_t port_number, uint32_t pin_number);
 \brief The program starts executing here.
 */
 int mote_main(void) {
-    uint16_t i;
-
     // clear local variables
     memset(&app_vars,0,sizeof(app_vars_t));
 
@@ -126,7 +131,8 @@ int mote_main(void) {
     //antenna_CHW_rx_switch_init();
     // Single-antenna node: no DFE GPIO antenna switching is required.
     // radio_configure_direction_finding_antenna_switch();
-    radio_configure_direction_finding_manual_AoD();
+    // Use AoA consistently with the single-antenna CTE transmitters.
+    radio_configure_direction_finding_manual_AoA();
     //set_antenna_CHW_switches();
 #endif
 
@@ -143,6 +149,12 @@ int mote_main(void) {
     timer_start();
 
     timer_set_callback(0, cb_timer);
+    timer_capture_now(0);
+    app_vars.time_slotStartAt = timer_getCapturedValue(0) + SEND_PERIOD_TICKS;
+    timer_schedule(0, app_vars.time_slotStartAt - TX_PREPARE_ADVANCE);
+    // Start autonomously.  A later valid TX1 reception replaces this deadline
+    // and synchronizes both the clock phase and packet sequence number.
+    app_vars.synced = TRUE;
 
     // prepare radio
     radio_rfOn();
@@ -195,6 +207,34 @@ void assemble_ibeacon_packet(uint8_t sqn) {
      app_vars.packet[i++]  = sqn;                // 34 byte
      app_vars.packet[i++]  = 0x02;               // tx id
 }
+
+void prepare_tx_packet(uint8_t sqn) {
+    app_vars.packet_len = sizeof(app_vars.packet);
+
+    radio_rfOn();
+    radio_setFrequency(CHANNEL, FREQ_TX);
+    assemble_ibeacon_packet(sqn);
+    radio_loadPacket(app_vars.packet, LENGTH_PACKET);
+
+    // Single-antenna node: keep DFE GPIO antenna switching disabled.
+    // radio_configure_direction_finding_antenna_switch();
+    // AoA TX generates the CTE without transmitter-side antenna switching.
+    radio_configure_direction_finding_manual_AoA();
+
+    radio_txEnable();
+    app_vars.state = APP_STATE_TX;
+    leds_radio_off();
+    leds_error_off();
+}
+
+void schedule_next_synced_tx(void) {
+    app_vars.pkt_sqn++;
+#if TX2_AUTONOMOUS_AFTER_SYNC
+    // Keep TX2 start-to-start spacing at exactly 500 ms when TX1 is missed.
+    app_vars.time_slotStartAt += SEND_PERIOD_TICKS;
+    timer_schedule(0, app_vars.time_slotStartAt - TX_PREPARE_ADVANCE);
+#endif
+}
 //=========================== callbacks =======================================
 
 void cb_startFrame(PORT_TIMER_WIDTH timestamp) {
@@ -204,6 +244,7 @@ void cb_startFrame(PORT_TIMER_WIDTH timestamp) {
     //leds_sync_on();
     // update debug stats
     app_dbg.num_startFrame++;
+    app_vars.start_timestamp = timestamp;
 }
 
 void cb_endFrame(PORT_TIMER_WIDTH timestamp) {
@@ -238,29 +279,19 @@ void cb_endFrame(PORT_TIMER_WIDTH timestamp) {
         }
 
         if (app_vars.isTargetPkt) {
-            app_vars.time_slotStartAt = timestamp + SEND_OFFSET;
+            // ADDRESS is raised at the end of the BLE preamble/access address,
+            // 40 us after TX1 begins on air.  Subtract that delay so TX2 starts
+            // 5 ms after the actual TX1 on-air start, independent of packet length.
+            app_vars.synced = TRUE;
+            app_vars.time_slotStartAt = app_vars.start_timestamp + SYNC_OFFSET_TICKS;
             timer_schedule(0, app_vars.time_slotStartAt);
             
             app_vars.pkt_sqn = app_vars.rxpk_packet[33];
-            app_vars.packet_len = sizeof(app_vars.packet);
-            
-            radio_rfOn();
-            radio_setFrequency(CHANNEL, FREQ_TX);
-            assemble_ibeacon_packet(app_vars.pkt_sqn);
-            radio_loadPacket(app_vars.packet, LENGTH_PACKET);
-            
-            // Single-antenna node: keep DFE GPIO antenna switching disabled.
-             //radio_configure_direction_finding_antenna_switch();
-            radio_configure_direction_finding_manual_AoA();
-
-            radio_txEnable();
-            app_vars.state = APP_STATE_TX;
-            // Wait for cb_timer to light the LED and start transmission.
-            leds_radio_off();
+            prepare_tx_packet(app_vars.pkt_sqn);
             return;
         } else {
             radio_rfOn();
-            radio_configure_direction_finding_manual_AoD();
+            radio_configure_direction_finding_manual_AoA();
             radio_setFrequency(CHANNEL, FREQ_RX);
             radio_rxEnable();
             radio_rxNow();
@@ -271,9 +302,15 @@ void cb_endFrame(PORT_TIMER_WIDTH timestamp) {
     }
 
     if (app_vars.state == APP_STATE_TX) {
+#if TX2_AUTONOMOUS_AFTER_SYNC
+        if (app_vars.synced) {
+            schedule_next_synced_tx();
+        }
+#endif
+
         radio_rfOn();
         radio_setFrequency(CHANNEL, FREQ_RX);
-        radio_configure_direction_finding_manual_AoD();
+        radio_configure_direction_finding_manual_AoA();
         radio_rxEnable();
         app_vars.state = APP_STATE_RX;
         radio_rxNow();
@@ -286,7 +323,17 @@ void cb_endFrame(PORT_TIMER_WIDTH timestamp) {
 void cb_timer(void) {
     app_dbg.num_timer++;
 
-    // RX is stopped and the LED is off, so this toggle marks response TX.
-    leds_radio_toggle();
-    radio_txNow();
+    if (app_vars.state == APP_STATE_TX) {
+        // TX is already prepared.  This compare event is the exact TX start.
+        leds_radio_toggle();
+        radio_txNow();
+#if TX2_AUTONOMOUS_AFTER_SYNC
+    } else if (app_vars.state == APP_STATE_RX && app_vars.synced) {
+        // Autonomous TX path.  TX2 did not receive a fresh TX1 in this round,
+        // so prepare its predicted seq shortly before the scheduled TX time.
+        radio_rfOff();
+        prepare_tx_packet(app_vars.pkt_sqn);
+        timer_schedule(0, app_vars.time_slotStartAt);
+#endif
+    }
 }

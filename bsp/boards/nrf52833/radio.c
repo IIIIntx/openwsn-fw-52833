@@ -616,6 +616,8 @@ kick_scheduler_t    radio_isr(void){
 
     // start of frame (payload)
     if (NRF_RADIO->EVENTS_ADDRESS){
+        timer_capture_now(1);
+        time_stampe = timer_getCapturedValue(1);
 
         // start sampling rssi
         NRF_RADIO->TASKS_RSSISTART = (uint32_t)1;
