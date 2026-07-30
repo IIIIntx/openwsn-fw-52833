@@ -34,6 +34,9 @@ and forwards one simple binary UART frame per RX node.
 #define UART_VERSION               1
 #define UART_HEADER_LEN            11
 #define UART_FRAME_MAX_LEN         (UART_HEADER_LEN + IQ_BYTES_TOTAL + 1)
+#define STARTUP_TEST_TEXT          "test\r\n"
+#define STARTUP_TEST_LEN           6
+#define UART_TEST_INTERVAL_TICKS   16000000
 
 typedef struct {
     uint8_t           radio_packet[REPORT_PACKET_MAX_LEN];
@@ -61,6 +64,7 @@ typedef struct {
     volatile uint16_t uart_len;
     volatile uint16_t uart_index;
     volatile uint8_t  uart_busy;
+    volatile uint32_t uart_test_last;
 } app_vars_t;
 
 app_vars_t app_vars;
@@ -85,22 +89,59 @@ int mote_main(void) {
     memset(&app_vars, 0, sizeof(app_vars));
     board_init();
     leds_init();
+    // Earliest portable startup checkpoint. If LED1 does not turn on, this
+    // image was not started or board_init()/leds_init() did not complete.
+    leds_error_on();
     timer_init();
     timer_start();
     uart_init();
     uart_setCallbacks(cb_uartTxDone, cb_uartRx);
     uart_enableInterrupts();
 
+    // Unconditional startup message for checking the DK virtual COM port.
+    // Send this before radio setup so UART can be tested independently.
+    memcpy(app_vars.uart_frame, STARTUP_TEST_TEXT, STARTUP_TEST_LEN);
+    app_vars.uart_len = STARTUP_TEST_LEN;
+    app_vars.uart_index = 0;
+    app_vars.uart_busy = TRUE;
+    uart_writeByte(app_vars.uart_frame[0]);
+    timer_capture_now(2);
+    app_vars.uart_test_last = timer_getCapturedValue(2);
+
     radio_setStartFrameCb(cb_startFrame);
     radio_setEndFrameCb(cb_endFrame);
     radio_rfOn();
+#if defined(NRF52840_XXAA)
+    // The RX nodes send the collector reports as BLE 1M packets.  The
+    // nRF52840DK OpenWSN BSP starts in IEEE 802.15.4 mode, so select its BLE
+    // packet configuration explicitly without moving this application file.
+    radio_ble_init();
+    radio_ble_setFrequency(CHANNEL);
+#else
     radio_setFrequency(CHANNEL, FREQ_RX);
+#endif
     radio_rxEnable();
     radio_rxNow();
-    leds_all_off();
+    // Keep startup-test LED1 on; reserve LED2..LED4 for RX2..RX4 reports.
+    leds_sync_off();
+    leds_radio_off();
+    leds_debug_off();
 
     while (1) {
         if (!app_vars.collection_active) {
+            timer_capture_now(0);
+            now = timer_getCapturedValue(0);
+            if (
+                !app_vars.uart_busy &&
+                (now - app_vars.uart_test_last) >= UART_TEST_INTERVAL_TICKS
+            ) {
+                memcpy(app_vars.uart_frame, STARTUP_TEST_TEXT, STARTUP_TEST_LEN);
+                app_vars.uart_len = STARTUP_TEST_LEN;
+                app_vars.uart_index = 0;
+                app_vars.uart_busy = TRUE;
+                app_vars.uart_test_last = now;
+                uart_writeByte(app_vars.uart_frame[0]);
+            }
             continue;
         }
 
@@ -222,9 +263,17 @@ void cb_endFrame(PORT_TIMER_WIDTH timestamp) {
     uint16_t offset;
     bool valid;
 
+    // The nRF52840 radio callback timestamp comes from RTC0, whereas the
+    // collection timeout uses TIMER0. Do not compare values from two clocks.
+    (void)timestamp;
+
     memset(app_vars.radio_packet, 0, sizeof(app_vars.radio_packet));
     app_vars.radio_len = sizeof(app_vars.radio_packet);
+#if defined(NRF52840_XXAA)
+    radio_ble_getReceivedFrame(
+#else
     radio_getReceivedFrame(
+#endif
         app_vars.radio_packet,
         &app_vars.radio_len,
         sizeof(app_vars.radio_packet),
@@ -252,7 +301,8 @@ void cb_endFrame(PORT_TIMER_WIDTH timestamp) {
         if (!app_vars.collection_active) {
             reset_collection();
             app_vars.collection_active = TRUE;
-            app_vars.collection_start = timestamp;
+            timer_capture_now(1);
+            app_vars.collection_start = timer_getCapturedValue(1);
             app_vars.round_seq =
                 (app_vars.radio_packet[6] & REPORT_FLAG_TX1) ?
                 app_vars.radio_packet[4] : app_vars.radio_packet[5];
@@ -287,7 +337,23 @@ void cb_endFrame(PORT_TIMER_WIDTH timestamp) {
                 app_vars.ready[node] = TRUE;
             }
         }
-        leds_error_toggle();
+        // nRF52840DK: RX1..RX4 reports map to LED1..LED4 respectively.
+        switch (node) {
+            case 0:
+                leds_error_toggle();
+                break;
+            case 1:
+                leds_sync_toggle();
+                break;
+            case 2:
+                leds_radio_toggle();
+                break;
+            case 3:
+                leds_debug_toggle();
+                break;
+            default:
+                break;
+        }
     }
 
     radio_rxEnable();
@@ -300,7 +366,6 @@ void cb_uartTxDone(void) {
         uart_writeByte(app_vars.uart_frame[app_vars.uart_index]);
     } else {
         app_vars.uart_busy = FALSE;
-        leds_debug_toggle();
     }
 }
 

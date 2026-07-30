@@ -20,7 +20,13 @@ from pathlib import Path
 import serial
 
 
+# Edit this define to match the nRF52840DK virtual COM port. The --port option
+# can still override it for a particular run.
+COM_PORT = "COM10"
+BAUD_RATE = 115200
+
 SYNC = b"\x55\xaa"
+STARTUP_TEST = b"test\r\n"
 VERSION = 1
 HEADER_LEN = 11
 IQ_BYTES_PER_TX = 352
@@ -102,8 +108,8 @@ def print_status(record: dict) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Receive multi_collector IQ frames")
-    parser.add_argument("--port", required=True, help="Collector serial port, e.g. COM5")
-    parser.add_argument("--baud", type=int, default=115200)
+    parser.add_argument("--port", default=COM_PORT, help=f"Collector serial port (default: {COM_PORT})")
+    parser.add_argument("--baud", type=int, default=BAUD_RATE)
     parser.add_argument(
         "--output",
         type=Path,
@@ -114,6 +120,8 @@ def main() -> None:
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     serial_buffer = bytearray()
+    startup_probe = bytearray()
+    startup_seen = False
     round_status: dict[int, dict[int, dict]] = {}
 
     print(f"Listening on {args.port} at {args.baud} baud")
@@ -128,6 +136,14 @@ def main() -> None:
                 if not chunk:
                     continue
                 serial_buffer.extend(chunk)
+
+                if not startup_seen:
+                    startup_probe.extend(chunk)
+                    if STARTUP_TEST in startup_probe:
+                        startup_seen = True
+                        print("UART startup test received: test", flush=True)
+                    elif len(startup_probe) > 64:
+                        del startup_probe[: -(len(STARTUP_TEST) - 1)]
 
                 for frame in extract_frames(serial_buffer):
                     record = decode_frame(frame)

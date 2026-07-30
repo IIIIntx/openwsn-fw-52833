@@ -67,6 +67,12 @@ void                radio_setFrequency(uint8_t frequency, radio_freq_t tx_or_rx)
 void                radio_rfOn(void);
 void                radio_rfOff(void);
 int8_t              radio_getFrequencyOffset(void);
+#if defined(NRF52840_XXAA)
+// BLE helpers provided by the nRF52840DK BSP. OpenWSN normally initializes
+// this radio for IEEE 802.15.4; standalone BLE applications select these.
+void                radio_ble_init(void);
+void                radio_ble_setFrequency(uint8_t channel);
+#endif
 // TX
 #ifdef SLOT_FSM_IMPLEMENTATION_MULTIPLE_TIMER_INTERRUPT
 void                radio_loadPacket_prepare(uint8_t* packet, uint16_t len);
@@ -80,11 +86,19 @@ void                radio_rxEnable(void);
 void                radio_rxEnable_scum(void);
 void                radio_rxNow(void);
 void                radio_getReceivedFrame(uint8_t* bufRead,
-                                uint8_t* lenRead,
-                                uint8_t  maxBufLen,
-                                 int8_t* rssi,
-                                uint8_t* lqi,
-                                   bool* crc);
+                                 uint8_t* lenRead,
+                                 uint8_t  maxBufLen,
+                                  int8_t* rssi,
+                                 uint8_t* lqi,
+                                    bool* crc);
+#if defined(NRF52840_XXAA)
+void                radio_ble_getReceivedFrame(uint8_t* bufRead,
+                                 uint8_t* lenRead,
+                                 uint8_t  maxBufLen,
+                                  int8_t* rssi,
+                                 uint8_t* lqi,
+                                    bool* crc);
+#endif
 
 // interrupt handlers
 kick_scheduler_t    radio_isr(void);

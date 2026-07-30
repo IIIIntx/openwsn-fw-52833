@@ -47,6 +47,9 @@
  </Memory4>
  <Project>
   <ProjectSessionItem path="nrf52840-dk"/>
+  <ProjectSessionItem path="nrf52840-dk;multi_collector"/>
+  <ProjectSessionItem path="nrf52840-dk;multi_collector;application"/>
+  <ProjectSessionItem path="nrf52840-dk;multi_collector;bsp"/>
   <ProjectSessionItem path="nrf52840-dk;01bsp_bmx160"/>
   <ProjectSessionItem path="nrf52840-dk;01bsp_bmx160;application"/>
   <ProjectSessionItem path="nrf52840-dk;01bsp_bmx160;bsp"/>
@@ -126,5 +129,5 @@
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="71" useTextEdit="1" path="../../bsp/boards/nrf52840_dk/sdk/ses_startup_nrf52840.s" left="0" top="24" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="10" y="64" useTextEdit="1" openedFrom="D:/Nordic/nRF5_SDK/atomic-openwsn-fw/projects/common/01bsp_i2c/01bsp_i2c.c" path="D:/segger/include/string.h" left="0" top="39" codecName="Default"/>
  </Files>
- <EMStudioWindow activeProject="01bsp_i2c" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="Debug" sessionSettings="" debugSearchFileMap="" fileDialogInitialDirectory="" debugSearchPath="" autoConnectCapabilities="3711"/>
+ <EMStudioWindow activeProject="multi_collector" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="Debug" sessionSettings="" debugSearchFileMap="" fileDialogInitialDirectory="" debugSearchPath="" autoConnectCapabilities="3711"/>
 </session>

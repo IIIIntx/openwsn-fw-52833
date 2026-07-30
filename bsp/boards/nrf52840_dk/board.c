@@ -36,12 +36,21 @@ int main(void) {
 
 void board_init(void) {
 
+#if defined(MULTI_COLLECTOR)
+    // GPIO does not require HFCLK. Light LED1 before waiting for the crystal,
+    // so even an HFCLK startup stall still leaves a visible checkpoint.
+    leds_init();
+    leds_error_on();
+#endif
+
     // start hfclock
     NRF_CLOCK->EVENTS_HFCLKSTARTED = 0;
     NRF_CLOCK->TASKS_HFCLKSTART    = 1;
     while (NRF_CLOCK->EVENTS_HFCLKSTARTED == 0);
 
+#if !defined(MULTI_COLLECTOR)
     leds_init();
+#endif
     debugpins_init();
     uart_init();
     sctimer_init();

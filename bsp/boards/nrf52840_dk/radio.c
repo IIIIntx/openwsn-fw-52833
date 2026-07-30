@@ -35,7 +35,11 @@
 #define FREQUENCY_STEP    5
 
 #define SFD_OCTET                 (0xA7)      ///< start of frame delimiter of IEEE 802.15.4
-#define MAX_PACKET_SIZE           (127)       ///< maximal size of radio packet (one more byte at the beginning needed to store the length)
+#if defined(MULTI_COLLECTOR)
+#define MAX_PACKET_SIZE           (255)       ///< BLE collector report can contain 252 bytes
+#else
+#define MAX_PACKET_SIZE           (127)       ///< IEEE 802.15.4 maximum
+#endif
 #define CRC_POLYNOMIAL            (0x11021)   ///< polynomial used for CRC calculation in 802.15.4 frames (x^16 + x^12 + x^5 + 1)
 
 #define WAIT_FOR_RADIO_DISABLE    (0)         ///< whether the driver shall wait until the radio is disabled upon calling radio_rfOff()
@@ -44,7 +48,7 @@
 #define RADIO_CRCINIT_24BIT       0x555555
 #define RADIO_CRCPOLY_24BIT       0x0000065B  /// ref: https://devzone.nordicsemi.com/f/nordic-q-a/44111/crc-register-values-for-a-24-bit-crc
 
-#define MAX_PAYLOAD_LENGTH        (127)
+#define MAX_PAYLOAD_LENGTH        MAX_PACKET_SIZE
 #define INTERFRAM_SPACING         (150)       // in us
 
 #define BLE_ACCESS_ADDR           0x8E89BED6  // the actual address is 0xD6, 0xBE, 0x89, 0x8E
@@ -224,7 +228,9 @@ void radio_rfOff(void) {
 
     while(NRF_RADIO->EVENTS_DISABLED==0);
 
+#if !defined(MULTI_COLLECTOR)
     leds_radio_off();
+#endif
     debugpins_radio_clr();
 
     radio_vars.state  = RADIOSTATE_RFOFF;
@@ -275,7 +281,9 @@ void radio_txEnable(void) {
 
     // wiggle debug pin
     debugpins_radio_set();
+#if !defined(MULTI_COLLECTOR)
     leds_radio_on();
+#endif
 
     radio_vars.state  = RADIOSTATE_TX_ENABLED;
 }
@@ -312,7 +320,9 @@ void radio_rxNow(void) {
     NRF_RADIO->TASKS_START = (uint32_t)1;
 
     debugpins_radio_set();
+#if !defined(MULTI_COLLECTOR)
     leds_radio_on();
+#endif
 
     radio_vars.state  = RADIOSTATE_LISTENING;
 }
