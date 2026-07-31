@@ -21,9 +21,21 @@ void some_delay(void);
 /**
 \brief The program starts executing here.
 */
-int mote_main(void) {uint8_t i;
+int mote_main(void) {
+#ifndef NRF52833
+   uint8_t i;
+#endif
    
    board_init();
+
+#ifdef NRF52833
+   leds_init();
+
+   while (1) {
+      leds_error_toggle();
+      some_delay();
+   }
+#else
    
    // error LED functions 01
    leds_error_on();          some_delay();
@@ -71,11 +83,12 @@ int mote_main(void) {uint8_t i;
    
    //// reset the board, so the program starts running again
    board_reset();
+#endif
    
    return 0;
 }
 
 void some_delay(void) {
-   volatile uint16_t delay;
-   for (delay=0xffff;delay>0;delay--);
+   volatile uint32_t delay;
+   for (delay=0x3ffff;delay>0;delay--);
 }

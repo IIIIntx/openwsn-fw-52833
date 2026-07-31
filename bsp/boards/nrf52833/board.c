@@ -47,7 +47,7 @@ void board_init(void) {
     i2c_disable();
     // initialize bsp modules
     // debugpins_init();
-    // leds_init();
+    leds_init();
     // uart_init();
     radio_init();
     sctimer_init();

@@ -12,7 +12,7 @@
 
 #define NRF_GPIO_PIN_MAP(port, pin) (((port) << 5) | ((pin) & 0x1F))
 
-#define LED_1          4
+#define LED_1          NRF_GPIO_PIN_MAP(0,20)
 #define LED_2          5
 #define LED_3          9
 //#define LED_4          NRF_GPIO_PIN_MAP(0,16) // p0.16
