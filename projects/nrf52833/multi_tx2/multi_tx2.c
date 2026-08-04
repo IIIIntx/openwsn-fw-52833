@@ -45,7 +45,7 @@ const static uint8_t ble_uuid[16]       = {
 #define DEBUG_RADIO_PIN 11
 
 #define SEND_PERIOD_TICKS       (16000000/1000)*500  // TX2 start-to-start: 500 ms
-#define TX1_TO_TX2_START_TICKS  (16000000/1000)*5    // on-air start-to-start: 5 ms
+#define TX1_TO_TX2_START_TICKS  (16000000/1000)*10   // on-air start-to-start: 10 ms
 #define BLE1M_ADDRESS_END_TICKS (16000000/1000000)*40 // 8 us preamble + 32 us access address
 #define SYNC_OFFSET_TICKS       (TX1_TO_TX2_START_TICKS-BLE1M_ADDRESS_END_TICKS)
 #define TX_PREPARE_ADVANCE      (16000000/1000)*1    // prepare autonomous TX 1 ms early
@@ -281,7 +281,7 @@ void cb_endFrame(PORT_TIMER_WIDTH timestamp) {
         if (app_vars.isTargetPkt) {
             // ADDRESS is raised at the end of the BLE preamble/access address,
             // 40 us after TX1 begins on air.  Subtract that delay so TX2 starts
-            // 5 ms after the actual TX1 on-air start, independent of packet length.
+            // 10 ms after the actual TX1 on-air start, independent of packet length.
             app_vars.synced = TRUE;
             app_vars.time_slotStartAt = app_vars.start_timestamp + SYNC_OFFSET_TICKS;
             timer_schedule(0, app_vars.time_slotStartAt);

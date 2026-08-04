@@ -116,6 +116,12 @@ void uart_setCTS(bool state) {
 
 void uart_writeByte(uint8_t byteToWrite){
 
+#if defined(MULTI_COLLECTOR)
+    // The collector UART protocol is an explicitly framed binary stream.
+    // Send every byte unchanged; inserting XON/XOFF escape bytes changes the
+    // declared frame length and makes the PC checksum validation fail.
+    NRF_UART0->TXD = byteToWrite;
+#else
     if (byteToWrite==XON || byteToWrite==XOFF || byteToWrite==XONXOFF_ESCAPE) {
         uart_vars.fXonXoffEscaping     = 0x01;
         uart_vars.xonXoffEscapedByte   = byteToWrite;
@@ -123,6 +129,7 @@ void uart_writeByte(uint8_t byteToWrite){
     } else {
         NRF_UART0->TXD = byteToWrite;
     }
+#endif
 }
 
 uint8_t uart_readByte(void) {
@@ -155,7 +162,13 @@ void UARTE0_UART0_IRQHandler(void) {
 //=========================== interrupt handlers ==============================
 
 kick_scheduler_t uart_tx_isr(void) {
-    
+
+#if defined(MULTI_COLLECTOR)
+    if (uart_vars.txCb != NULL){
+        uart_vars.txCb();
+        return KICK_SCHEDULER;
+    }
+#else
     if (uart_vars.fXonXoffEscaping==0x01) {
         uart_vars.fXonXoffEscaping = 0x00;
         NRF_UART0->TXD = uart_vars.xonXoffEscapedByte^XONXOFF_MASK;
@@ -165,6 +178,7 @@ kick_scheduler_t uart_tx_isr(void) {
             return KICK_SCHEDULER;
         }
     }
+#endif
 
     return DO_NOT_KICK_SCHEDULER;
 }

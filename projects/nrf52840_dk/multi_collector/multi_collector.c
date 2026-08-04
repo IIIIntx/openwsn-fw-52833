@@ -15,7 +15,7 @@ and forwards one simple binary UART frame per RX node.
 
 //=========================== defines =========================================
 
-#define CHANNEL                    17
+#define REPORT_CHANNEL             16
 #define RX_NODE_COUNT              4
 #define IQ_BYTES_TOTAL             704
 #define REPORT_PACKET_MAX_LEN      252
@@ -116,9 +116,9 @@ int mote_main(void) {
     // nRF52840DK OpenWSN BSP starts in IEEE 802.15.4 mode, so select its BLE
     // packet configuration explicitly without moving this application file.
     radio_ble_init();
-    radio_ble_setFrequency(CHANNEL);
+    radio_ble_setFrequency(REPORT_CHANNEL);
 #else
-    radio_setFrequency(CHANNEL, FREQ_RX);
+    radio_setFrequency(REPORT_CHANNEL, FREQ_RX);
 #endif
     radio_rxEnable();
     radio_rxNow();

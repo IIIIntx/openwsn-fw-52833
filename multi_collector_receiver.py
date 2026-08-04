@@ -16,13 +16,14 @@ import base64
 import json
 from datetime import datetime
 from pathlib import Path
+from time import monotonic
 
 import serial
 
 
 # Edit this define to match the nRF52840DK virtual COM port. The --port option
 # can still override it for a particular run.
-COM_PORT = "COM10"
+COM_PORT = "COM9"
 BAUD_RATE = 115200
 
 SYNC = b"\x55\xaa"
@@ -34,6 +35,9 @@ IQ_BYTES_TOTAL = 704
 FLAG_TX1 = 0x01
 FLAG_TX2 = 0x02
 FLAG_COMPLETE = 0x04
+KNOWN_FLAGS = FLAG_TX1 | FLAG_TX2 | FLAG_COMPLETE
+RX_NODE_COUNT = 4
+ROUND_STATUS_TIMEOUT_S = 3.0
 
 
 def extract_frames(buffer: bytearray):
@@ -52,7 +56,15 @@ def extract_frames(buffer: bytearray):
             return
 
         data_len = (buffer[9] << 8) | buffer[10]
-        if data_len not in (0, IQ_BYTES_TOTAL):
+        flags = buffer[6]
+        header_valid = (
+            buffer[2] == VERSION
+            and 1 <= buffer[3] <= RX_NODE_COUNT
+            and not (flags & ~KNOWN_FLAGS)
+            and data_len in (0, IQ_BYTES_TOTAL)
+            and bool(flags & FLAG_COMPLETE) == (data_len == IQ_BYTES_TOTAL)
+        )
+        if not header_valid:
             del buffer[0]
             continue
 
@@ -65,7 +77,7 @@ def extract_frames(buffer: bytearray):
         checksum = 0
         for byte in frame[2:-1]:
             checksum ^= byte
-        if frame[2] == VERSION and checksum == frame[-1]:
+        if checksum == frame[-1]:
             yield frame
 
 
@@ -122,7 +134,7 @@ def main() -> None:
     serial_buffer = bytearray()
     startup_probe = bytearray()
     startup_seen = False
-    round_status: dict[int, dict[int, dict]] = {}
+    round_status: dict[int, tuple[float, dict[int, dict]]] = {}
 
     print(f"Listening on {args.port} at {args.baud} baud")
     print(f"Saving to {args.output.resolve()}")
@@ -156,9 +168,14 @@ def main() -> None:
                         if record["tx1_received"]
                         else record["tx2_seq"]
                     )
-                    nodes = round_status.setdefault(round_seq, {})
+                    now = monotonic()
+                    for stale_seq, (created_at, _) in list(round_status.items()):
+                        if now - created_at > ROUND_STATUS_TIMEOUT_S:
+                            del round_status[stale_seq]
+
+                    _, nodes = round_status.setdefault(round_seq, (now, {}))
                     nodes[record["rx_id"]] = record
-                    if len(nodes) == 4:
+                    if len(nodes) == RX_NODE_COUNT:
                         missing = []
                         for rx_id in range(1, 5):
                             node = nodes[rx_id]

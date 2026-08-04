@@ -3,38 +3,40 @@
  <Bookmarks/>
  <Breakpoints groups="Breakpoints" active_group="Breakpoints"/>
  <ExecutionProfileWindow/>
- <FrameBuffer/>
+ <FrameBufferWindow>
+  <FrameBufferWindow bufferHeight="-1" addressSpace="" addressText="" bufferWidth="-1"/>
+ </FrameBufferWindow>
  <Memory1>
-  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" viewType="4" addressOrder="0" columnsText="" refreshPeriod="0" name=" 01bsp_leds" sizeText="" addressText=""/>
-  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" viewType="4" addressOrder="0" columnsText="" refreshPeriod="0" name="Copy of  01bsp_leds" sizeText="" addressText=""/>
-  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" viewType="4" addressOrder="0" columnsText="" refreshPeriod="0" name="01bsp_sctimer" sizeText="" addressText=""/>
-  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" viewType="4" addressOrder="0" columnsText="" refreshPeriod="0" name="01bsp_uart" sizeText="" addressText=""/>
-  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" viewType="4" addressOrder="0" columnsText="" refreshPeriod="0" name="Copy of 01bsp_uart" sizeText="" addressText=""/>
-  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" viewType="4" addressOrder="0" columnsText="" refreshPeriod="0" name="01bsp_i2c" sizeText="" addressText=""/>
+  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" addressOrder="0" columnsText="" refreshPeriod="0" name=" 01bsp_leds" radix="16" sizeText="" addressText=""/>
+  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" addressOrder="0" columnsText="" refreshPeriod="0" name="Copy of  01bsp_leds" radix="0" sizeText="" addressText=""/>
+  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" addressOrder="0" columnsText="" refreshPeriod="0" name="01bsp_sctimer" radix="0" sizeText="" addressText=""/>
+  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" addressOrder="0" columnsText="" refreshPeriod="0" name="01bsp_uart" radix="0" sizeText="" addressText=""/>
+  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" addressOrder="0" columnsText="" refreshPeriod="0" name="Copy of 01bsp_uart" radix="0" sizeText="" addressText=""/>
+  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" addressOrder="0" columnsText="" refreshPeriod="0" name="01bsp_i2c" radix="0" sizeText="" addressText=""/>
  </Memory1>
  <Memory2>
-  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" viewType="4" addressOrder="0" columnsText="" refreshPeriod="0" name=" 01bsp_leds" sizeText="" addressText=""/>
-  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" viewType="4" addressOrder="0" columnsText="" refreshPeriod="0" name="Copy of  01bsp_leds" sizeText="" addressText=""/>
-  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" viewType="4" addressOrder="0" columnsText="" refreshPeriod="0" name="01bsp_sctimer" sizeText="" addressText=""/>
-  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" viewType="4" addressOrder="0" columnsText="" refreshPeriod="0" name="01bsp_uart" sizeText="" addressText=""/>
-  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" viewType="4" addressOrder="0" columnsText="" refreshPeriod="0" name="Copy of 01bsp_uart" sizeText="" addressText=""/>
-  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" viewType="4" addressOrder="0" columnsText="" refreshPeriod="0" name="01bsp_i2c" sizeText="" addressText=""/>
+  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" addressOrder="0" columnsText="" refreshPeriod="0" name=" 01bsp_leds" radix="16" sizeText="" addressText=""/>
+  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" addressOrder="0" columnsText="" refreshPeriod="0" name="Copy of  01bsp_leds" radix="0" sizeText="" addressText=""/>
+  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" addressOrder="0" columnsText="" refreshPeriod="0" name="01bsp_sctimer" radix="0" sizeText="" addressText=""/>
+  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" addressOrder="0" columnsText="" refreshPeriod="0" name="01bsp_uart" radix="0" sizeText="" addressText=""/>
+  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" addressOrder="0" columnsText="" refreshPeriod="0" name="Copy of 01bsp_uart" radix="0" sizeText="" addressText=""/>
+  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" addressOrder="0" columnsText="" refreshPeriod="0" name="01bsp_i2c" radix="0" sizeText="" addressText=""/>
  </Memory2>
  <Memory3>
-  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" viewType="4" addressOrder="0" columnsText="" refreshPeriod="0" name=" 01bsp_leds" sizeText="" addressText=""/>
-  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" viewType="4" addressOrder="0" columnsText="" refreshPeriod="0" name="Copy of  01bsp_leds" sizeText="" addressText=""/>
-  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" viewType="4" addressOrder="0" columnsText="" refreshPeriod="0" name="01bsp_sctimer" sizeText="" addressText=""/>
-  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" viewType="4" addressOrder="0" columnsText="" refreshPeriod="0" name="01bsp_uart" sizeText="" addressText=""/>
-  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" viewType="4" addressOrder="0" columnsText="" refreshPeriod="0" name="Copy of 01bsp_uart" sizeText="" addressText=""/>
-  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" viewType="4" addressOrder="0" columnsText="" refreshPeriod="0" name="01bsp_i2c" sizeText="" addressText=""/>
+  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" addressOrder="0" columnsText="" refreshPeriod="0" name=" 01bsp_leds" radix="16" sizeText="" addressText=""/>
+  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" addressOrder="0" columnsText="" refreshPeriod="0" name="Copy of  01bsp_leds" radix="0" sizeText="" addressText=""/>
+  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" addressOrder="0" columnsText="" refreshPeriod="0" name="01bsp_sctimer" radix="0" sizeText="" addressText=""/>
+  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" addressOrder="0" columnsText="" refreshPeriod="0" name="01bsp_uart" radix="0" sizeText="" addressText=""/>
+  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" addressOrder="0" columnsText="" refreshPeriod="0" name="Copy of 01bsp_uart" radix="0" sizeText="" addressText=""/>
+  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" addressOrder="0" columnsText="" refreshPeriod="0" name="01bsp_i2c" radix="0" sizeText="" addressText=""/>
  </Memory3>
  <Memory4>
-  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" viewType="4" addressOrder="0" columnsText="" refreshPeriod="0" name=" 01bsp_leds" sizeText="" addressText=""/>
-  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" viewType="4" addressOrder="0" columnsText="" refreshPeriod="0" name="Copy of  01bsp_leds" sizeText="" addressText=""/>
-  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" viewType="4" addressOrder="0" columnsText="" refreshPeriod="0" name="01bsp_sctimer" sizeText="" addressText=""/>
-  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" viewType="4" addressOrder="0" columnsText="" refreshPeriod="0" name="01bsp_uart" sizeText="" addressText=""/>
-  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" viewType="4" addressOrder="0" columnsText="" refreshPeriod="0" name="Copy of 01bsp_uart" sizeText="" addressText=""/>
-  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" viewType="4" addressOrder="0" columnsText="" refreshPeriod="0" name="01bsp_i2c" sizeText="" addressText=""/>
+  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" addressOrder="0" columnsText="" refreshPeriod="0" name=" 01bsp_leds" radix="16" sizeText="" addressText=""/>
+  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" addressOrder="0" columnsText="" refreshPeriod="0" name="Copy of  01bsp_leds" radix="0" sizeText="" addressText=""/>
+  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" addressOrder="0" columnsText="" refreshPeriod="0" name="01bsp_sctimer" radix="0" sizeText="" addressText=""/>
+  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" addressOrder="0" columnsText="" refreshPeriod="0" name="01bsp_uart" radix="0" sizeText="" addressText=""/>
+  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" addressOrder="0" columnsText="" refreshPeriod="0" name="Copy of 01bsp_uart" radix="0" sizeText="" addressText=""/>
+  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" addressOrder="0" columnsText="" refreshPeriod="0" name="01bsp_i2c" radix="0" sizeText="" addressText=""/>
  </Memory4>
  <Project>
   <ProjectSessionItem path="nrf52833"/>
@@ -48,14 +50,12 @@
   <ProjectSessionItem path="nrf52833;multi_rx1;bsp"/>
   <ProjectSessionItem path="nrf52833;multi_rx1;bsp;board"/>
   <ProjectSessionItem path="nrf52833;multi_rx1;bsp;board;nrf52833"/>
-  <ProjectSessionItem path="nrf52833;multi_rx1;inc"/>
   <ProjectSessionItem path="nrf52833;multi_tx1"/>
   <ProjectSessionItem path="nrf52833;multi_tx1;application"/>
-  <ProjectSessionItem path="nrf52833;multi_tx2"/>
-  <ProjectSessionItem path="nrf52833;multi_tx2;application"/>
-  <ProjectSessionItem path="nrf52833;multi_tx2;bsp"/>
-  <ProjectSessionItem path="nrf52833;multi_tx2;bsp;board"/>
-  <ProjectSessionItem path="nrf52833;multi_tx2;bsp;board;nrf52833"/>
+  <ProjectSessionItem path="nrf52833;multi_tx1;bsp"/>
+  <ProjectSessionItem path="nrf52833;multi_tx1;bsp;board"/>
+  <ProjectSessionItem path="nrf52833;multi_tx1;bsp;board;nrf52833"/>
+  <ProjectSessionItem path="nrf52833;multi_tx1;bsp;board;nrf52833;sdk"/>
  </Project>
  <Register1>
   <RegisterWindow visibleNodes="CPU - Current Context/r0;CPU - Current Context/r1;CPU - Current Context/r2;CPU - Current Context/r3;CPU - Current Context/r4;CPU - Current Context/r5;CPU - Current Context/r6;CPU - Current Context/r7;CPU - Current Context/r8;CPU - Current Context/r9;CPU - Current Context/r10;CPU - Current Context/r11;CPU - Current Context/r12;CPU - Current Context/sp(r13);CPU - Current Context/lr(r14);CPU - Current Context/pc(r15);CPU - Current Context/apsr;CPU/r0;CPU/r1;CPU/r2;CPU/r3;CPU/r4;CPU/r5;CPU/r6;CPU/r7;CPU/r8;CPU/r9;CPU/r10;CPU/r11;CPU/r12;CPU/sp(r13);CPU/lr(r14);CPU/pc(r15);CPU/xpsr;CPU/MSP;CPU/PSP;CPU/PRIMASK;CPU/BASEPRI;CPU/FAULTMASK;CPU/CONTROL;CPU/internal" binaryNodes="" asciiNodes="" openNodes="CPU - Current Context" name=" 01bsp_leds" decimalNodes="" octalNodes="" unsignedNodes=""/>
@@ -110,26 +110,26 @@
   <Watches active="0" update="Never"/>
  </Watch4>
  <Files>
-  <SessionOpenFile windowGroup="DockEditLeft" x="5" y="50" useTextEdit="1" openedFrom="D:/Nordic/nRF5_SDK/atomic-openwsn-fw/projects/common/01bsp_i2c/01bsp_i2c.c" path="../../bsp/boards/nrf52833/i2c.c" left="0" top="22" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="0" useTextEdit="1" path="../../bsp/boards/i2c.h" left="0" top="0" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="14" y="49" useTextEdit="1" path="../common/01bsp_i2c/01bsp_i2c.c" left="0" top="15" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="16" y="25" useTextEdit="1" path="../common/01bsp_leds/01bsp_leds.c" left="0" top="0" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="14" y="74" useTextEdit="1" path="01bsp_radio_tx/01bsp_radio_tx.c" left="0" top="38" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="3" y="0" useTextEdit="1" path="01bsp_radio_ble/01bsp_radio_ble.c" left="0" top="0" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="16" y="34" useTextEdit="1" openedFrom="D:/SchoolTasks/SCuMRobot/WindData/52833Node/atomic-openwsn-fw-develop/projects/common/01bsp_leds/01bsp_leds.c" path="../../bsp/boards/leds.h" left="0" top="28" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="8" y="16" useTextEdit="1" openedFrom="D:/SchoolTasks/SCuMRobot/WindData/52833Node/atomic-openwsn-fw-develop/bsp/boards/nrf52833/board.c" path="../../bsp/boards/nrf52833/leds.c" left="0" top="0" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="11" y="17" useTextEdit="1" path="../common/03oos_openwsn/03oos_openwsn.c" left="0" top="0" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="12" y="11" useTextEdit="1" openedFrom="D:/SchoolTasks/SCuMRobot/WindData/52833Node/atomic-openwsn-fw-develop/projects/nrf52833/01bsp_radio_ble/01bsp_radio_ble.c" path="../../bsp/boards/nrf52833/board.c" left="0" top="0" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="5" y="53" useTextEdit="1" openedFrom="D:/SchoolTasks/SCuMRobot/WindData/52833Node/atomic-openwsn-fw-develop/projects/common/03oos_openwsn/03oos_openwsn.c" path="../../openstack/openstack.c" left="0" top="44" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="18" y="1003" useTextEdit="1" openedFrom="D:/SchoolTasks/SCuMRobot/WindData/52833Node/atomic-openwsn-fw-develop/bsp/boards/nrf52833/board.c" path="../../bsp/boards/nrf52833/sdk/nrf52833.h" left="0" top="984" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="8" y="6940" useTextEdit="1" path="../../bsp/boards/nrf52833/sdk/nrf52833_bitfields.h" left="0" top="6936" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="66" y="372" useTextEdit="1" path="../../bsp/boards/nrf52833/radio.c" left="0" top="335" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="9" y="15" useTextEdit="1" path="01bsp_timer/01bsp_timer.c" left="0" top="0" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="9" y="235" useTextEdit="1" path="multi_rx1/multi_rx1.c" left="0" selected="1" top="220" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="6" y="21" useTextEdit="1" path="../../inc/check_config.h" left="0" top="0" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="223" useTextEdit="1" path="multi_tx1/multi_tx1.c" left="0" top="186" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="15" y="252" useTextEdit="1" path="multi_tx2/multi_tx2.c" left="0" top="222" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="57" y="37" useTextEdit="1" path="../../bsp/boards/nrf52833/radio_df.h" left="0" top="2" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="5" y="50" useTextEdit="1" openedFrom="D:/Nordic/nRF5_SDK/atomic-openwsn-fw/projects/common/01bsp_i2c/01bsp_i2c.c" useBinaryEdit="0" left="0" path="../../bsp/boards/nrf52833/i2c.c" selected="0" top="22" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="0" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../bsp/boards/i2c.h" selected="0" top="0" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="14" y="49" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../common/01bsp_i2c/01bsp_i2c.c" selected="0" top="15" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="16" y="25" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../common/01bsp_leds/01bsp_leds.c" selected="0" top="0" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="14" y="74" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="01bsp_radio_tx/01bsp_radio_tx.c" selected="0" top="38" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="3" y="0" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="01bsp_radio_ble/01bsp_radio_ble.c" selected="0" top="0" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="16" y="34" useTextEdit="1" openedFrom="D:/SchoolTasks/SCuMRobot/WindData/52833Node/atomic-openwsn-fw-develop/projects/common/01bsp_leds/01bsp_leds.c" useBinaryEdit="0" left="0" path="../../bsp/boards/leds.h" selected="0" top="28" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="8" y="16" useTextEdit="1" openedFrom="D:/SchoolTasks/SCuMRobot/WindData/52833Node/atomic-openwsn-fw-develop/bsp/boards/nrf52833/board.c" useBinaryEdit="0" left="0" path="../../bsp/boards/nrf52833/leds.c" selected="0" top="0" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="11" y="17" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../common/03oos_openwsn/03oos_openwsn.c" selected="0" top="0" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="12" y="11" useTextEdit="1" openedFrom="D:/SchoolTasks/SCuMRobot/WindData/52833Node/atomic-openwsn-fw-develop/projects/nrf52833/01bsp_radio_ble/01bsp_radio_ble.c" useBinaryEdit="0" left="0" path="../../bsp/boards/nrf52833/board.c" selected="0" top="0" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="5" y="53" useTextEdit="1" openedFrom="D:/SchoolTasks/SCuMRobot/WindData/52833Node/atomic-openwsn-fw-develop/projects/common/03oos_openwsn/03oos_openwsn.c" useBinaryEdit="0" left="0" path="../../openstack/openstack.c" selected="0" top="44" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="18" y="1003" useTextEdit="1" openedFrom="D:/SchoolTasks/SCuMRobot/WindData/52833Node/atomic-openwsn-fw-develop/bsp/boards/nrf52833/board.c" useBinaryEdit="0" left="0" path="../../bsp/boards/nrf52833/sdk/nrf52833.h" selected="0" top="984" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="37" y="10270" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../bsp/boards/nrf52833/sdk/nrf52833_bitfields.h" selected="0" top="10219" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="66" y="372" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../bsp/boards/nrf52833/radio.c" selected="0" top="311" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="9" y="15" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="01bsp_timer/01bsp_timer.c" selected="0" top="0" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="36" y="20" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="multi_rx1/multi_rx1.c" selected="1" top="3" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="6" y="21" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../inc/check_config.h" selected="0" top="0" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="51" y="31" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="multi_tx1/multi_tx1.c" selected="0" top="3" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="15" y="252" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="multi_tx2/multi_tx2.c" selected="0" top="222" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="57" y="37" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../bsp/boards/nrf52833/radio_df.h" selected="0" top="0" codecName="Default"/>
  </Files>
- <EMStudioWindow activeProject=" 01bsp_leds" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="Debug" sessionSettings="" debugSearchFileMap="" fileDialogInitialDirectory="" debugSearchPath="" autoConnectCapabilities="3199"/>
+ <ARMCrossStudioWindow activeProject="multi_rx1" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="Debug" sessionSettings="" debugSearchFileMap="" fileDialogInitialDirectory="" debugSearchPath="" autoConnectCapabilities="3711"/>
 </session>

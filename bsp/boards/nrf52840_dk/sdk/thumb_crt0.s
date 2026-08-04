@@ -237,16 +237,18 @@ _start:
   ldr r0, = __heap_start__
   ldr r1, = __heap_end__
   subs r1, r1, r0
-#if defined(__SES_ARM)
-  bl __SEGGER_RTL_init_heap
-#else
+  /*
+   * Initialize the heap locally. Some Embedded Studio versions define
+   * __SES_ARM but do not link the newer SEGGER RTL heap helper, which leaves
+   * __SEGGER_RTL_init_heap unresolved. This layout is the same one used by
+   * the nRF52833 startup code and does not require a runtime-library symbol.
+   */
   cmp r1, #8
   blt 1f
   movs r2, #0
   str r2, [r0]
   str r1, [r0, #4] 
 1:
-#endif
 #endif
 
 #ifdef INITIALIZE_USER_SECTIONS

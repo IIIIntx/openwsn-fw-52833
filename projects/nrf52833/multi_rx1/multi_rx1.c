@@ -18,21 +18,22 @@ use one zero-data placeholder packet.
 //=========================== defines =========================================
 
 #ifndef RX_NODE_ID
-#define RX_NODE_ID                 4
+#define RX_NODE_ID                 1
 #endif
 
 #if RX_NODE_ID < 1 || RX_NODE_ID > 4
 #error "RX_NODE_ID must be 1, 2, 3, or 4"
 #endif
 
-#define CHANNEL                    17
+#define MEASUREMENT_CHANNEL        17
+#define REPORT_CHANNEL             16
 #define TX_PACKET_MAX_LEN          128
 #define NUM_SAMPLES                SAMPLE_MAXCNT
 #define IQ_BYTES_PER_TX            (NUM_SAMPLES * 4)
 #define IQ_BYTES_TOTAL             (IQ_BYTES_PER_TX * 2)
 
 #define PAIR_TIMEOUT_TICKS         ((16000000/1000)*100)
-#define TX1_TO_TX2_START_TICKS     ((16000000/1000)*5)
+#define TX1_TO_TX2_START_TICKS     ((16000000/1000)*10)
 #define REPORT_SLOT_BASE_TICKS     ((16000000/1000)*150)
 #define REPORT_SLOT_SPACING_TICKS  ((16000000/1000)*40)
 
@@ -112,7 +113,7 @@ int mote_main(void) {
     radio_setStartFrameCb(cb_startFrame);
     radio_setEndFrameCb(cb_endFrame);
     radio_rfOn();
-    radio_setFrequency(CHANNEL, FREQ_RX);
+    radio_setFrequency(MEASUREMENT_CHANNEL, FREQ_RX);
     radio_configure_direction_finding_manual_AoA();
     radio_set_df_sample_buffer(app_vars.rx_samples, NUM_SAMPLES);
 
@@ -244,7 +245,7 @@ void send_report_fragment(void) {
     app_vars.report_packet[11] = app_vars.tx2_iq_count;
 
     radio_rfOff();
-    radio_setFrequency(CHANNEL, FREQ_TX);
+    radio_setFrequency(REPORT_CHANNEL, FREQ_TX);
     radio_loadPacket(app_vars.report_packet, 12 + data_len);
     radio_txEnable();
     radio_txNow();
@@ -274,7 +275,7 @@ void cb_endFrame(PORT_TIMER_WIDTH timestamp) {
             send_report_fragment();
         } else {
             radio_rfOn();
-            radio_setFrequency(CHANNEL, FREQ_RX);
+            radio_setFrequency(MEASUREMENT_CHANNEL, FREQ_RX);
             radio_configure_direction_finding_manual_AoA();
             radio_set_df_sample_buffer(app_vars.rx_samples, NUM_SAMPLES);
             app_vars.state = APP_STATE_RX;

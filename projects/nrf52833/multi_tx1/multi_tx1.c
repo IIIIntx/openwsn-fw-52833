@@ -13,6 +13,8 @@
 #include "aod.h"
 #include "uart.h"
 #include "timer.h"
+#include "nrf52833.h"
+#include "nrf52833_bitfields.h"
 
 //=========================== defines =========================================
 
@@ -27,6 +29,7 @@
 #define LENGTH_SERIAL_FRAME  127            // length of the serial frame
 
 #define ENABLE_DF       1
+#define TX_POWER_SETTING RADIO_TXPOWER_TXPOWER_Neg8dBm
 
 uint16_t length = 0;
 
@@ -135,6 +138,9 @@ int mote_main(void) {
 
     // prepare radio
     radio_rfOn();
+    // TX1 only: override the shared BSP default (0 dBm) with +4 dBm.
+    NRF_RADIO->TXPOWER =
+        (TX_POWER_SETTING << RADIO_TXPOWER_TXPOWER_Pos);
     // freq type only effects on scum port
     radio_setFrequency(CHANNEL, FREQ_TX);
     app_vars.packet_len = sizeof(app_vars.packet);
